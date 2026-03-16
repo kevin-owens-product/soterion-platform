@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAlerts, acknowledgeAlert as apiAck } from "@/lib/api";
 import { useAlertsStore } from "@/store/alertsStore";
@@ -15,6 +15,9 @@ export function useAlerts() {
   const wsConnected = useAlertsStore((s) => s.wsConnected);
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
+
+  // Track previous alert count to detect new ones
+  const prevCountRef = useRef(0);
 
   // Initial fetch via React Query
   const query = useQuery<AnomalyEvent[]>({
@@ -43,6 +46,18 @@ export function useAlerts() {
 
   // Derived data
   const alerts = Array.isArray(storeAlerts) ? storeAlerts : [];
+
+  // Toast notification when new alerts arrive from polling
+  useEffect(() => {
+    if (alerts.length > prevCountRef.current && prevCountRef.current > 0) {
+      const newCount = alerts.length - prevCountRef.current;
+      addToast({
+        type: "warning",
+        title: `${newCount} new alert${newCount > 1 ? "s" : ""} detected`,
+      });
+    }
+    prevCountRef.current = alerts.length;
+  }, [alerts.length, addToast]);
   const unacknowledged = useMemo(
     () => alerts.filter((a) => !a.acknowledgedBy && !a.acknowledged),
     [alerts],

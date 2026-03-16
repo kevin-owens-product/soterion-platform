@@ -71,7 +71,9 @@ export interface AnomalyEvent {
   confidence: number;
   description: string;
   timestamp: string;
+  acknowledged: boolean;
   acknowledgedBy: string | null;
+  acknowledgedAt: string | null;
   resolvedAt: string | null;
   metadata: Record<string, unknown>;
 }

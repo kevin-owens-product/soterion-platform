@@ -2,45 +2,28 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Leaderboard', () => {
   test.beforeEach(async ({ page }) => {
-    // Login first
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill('dev@soterion.io');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /login|sign in/i }).click();
-    await expect(page).toHaveURL(/\/ops/, { timeout: 10_000 });
+    await page.fill('input[type="email"]', 'admin@soterion.io');
+    await page.fill('input[type="password"]', 'soterion123');
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/.*ops/, { timeout: 10000 });
   });
 
-  test('should display the leaderboard with ranked rows', async ({ page }) => {
-    // Navigate to leaderboard page
-    await page.goto('/leaderboard');
+  test('should display operator leaderboard', async ({ page }) => {
+    await page.click('text=Leaderboard');
+    await expect(page).toHaveURL(/.*leaderboard/);
 
-    // Assert leaderboard table or list is visible
-    await expect(
-      page.getByText(/leaderboard|rankings/i).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    // Should show leaderboard heading
+    await expect(page.locator('text=OPERATOR LEADERBOARD')).toBeVisible({ timeout: 10000 });
 
-    // Assert the table has at least one data row
-    const rows = page.locator('table tbody tr, [data-testid="leaderboard-row"]');
-    await expect(rows.first()).toBeVisible({ timeout: 5_000 });
-
-    const rowCount = await rows.count();
-    expect(rowCount).toBeGreaterThan(0);
+    // Should show at least one operator entry
+    await expect(page.locator('text=Amara')).toBeVisible({ timeout: 10000 });
   });
 
-  test('should highlight the current user in the leaderboard', async ({ page }) => {
-    await page.goto('/leaderboard');
+  test('should highlight current user', async ({ page }) => {
+    await page.click('text=Leaderboard');
 
-    // Look for the current user's row being highlighted (via CSS class, data attribute, or visual indicator)
-    const highlightedRow = page.locator(
-      '[data-current-user="true"], .current-user, tr.highlighted, [aria-current="true"]',
-    );
-
-    const isHighlighted = await highlightedRow.isVisible().catch(() => false);
-    if (!isHighlighted) {
-      // Fallback: check if the user's name appears in the leaderboard
-      await expect(page.getByText(/dev user/i)).toBeVisible({ timeout: 5_000 });
-    } else {
-      await expect(highlightedRow).toBeVisible();
-    }
+    // Admin User should be highlighted with "YOU" label
+    await expect(page.locator('text=YOU')).toBeVisible({ timeout: 10000 });
   });
 });

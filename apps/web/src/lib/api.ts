@@ -461,6 +461,68 @@ export function getROIMetrics(): Promise<ROIMetrics> {
   return apiFetch<ROIMetrics>("/api/v1/analytics/roi");
 }
 
+// ── Shift Handoff ──────────────────────────────────────
+
+export interface ShiftHandoff {
+  shift: {
+    operator: string;
+    start: string;
+    end: string;
+    score: number;
+  };
+  summary: {
+    totalIncidents: number;
+    acknowledged: number;
+    escalated: number;
+    pending: number;
+    avgResponseSecs: number;
+    peakZone: string;
+    peakDensityPct: number;
+  };
+  pendingItems: { type: string; detail: string }[];
+  watchItems: string[];
+  missionsStatus: { title: string; progress: number; target: number; completed: boolean }[];
+  topIncidents: { type: string; zone: string; severity: number; time: string; resolved: boolean }[];
+}
+
+export function getShiftHandoff(): Promise<ShiftHandoff> {
+  return apiFetch<ShiftHandoff>("/api/v1/shifts/handoff");
+}
+
+// ── Trend Analytics ────────────────────────────────────
+
+export interface TrendDataPoint {
+  date: string;
+  value: number;
+  min: number;
+  max: number;
+  avg: number;
+}
+
+export interface TrendComparison {
+  previousPeriodAvg: number;
+  currentPeriodAvg: number;
+  changePct: number;
+  trend: "up" | "down" | "flat";
+}
+
+export interface TrendResponse {
+  metric: string;
+  period: string;
+  data: TrendDataPoint[];
+  comparison: TrendComparison;
+}
+
+export function getTrends(
+  metric: string,
+  period: string,
+  zoneId?: string,
+): Promise<TrendResponse> {
+  const params = new URLSearchParams({ metric, period });
+  if (zoneId) params.set("zone_id", zoneId);
+  return apiFetch<TrendResponse>(`/api/v1/analytics/trends?${params}`);
+}
+
 // ── Compliance Reports ──────────────────────────────────
 
 export interface ComplianceReport {
@@ -511,4 +573,199 @@ export function getComplianceReport(
   return apiFetch<{ report: ComplianceReport }>(
     `/api/v1/reports/compliance?framework=${encodeURIComponent(framework)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=json`,
   );
+}
+
+// ── ML Model Training Pipeline ────────────────────────
+
+export interface MLModel {
+  id: string;
+  facilityType: string;
+  modelKey: string;
+  version: string;
+  status: "active" | "training" | "queued";
+  accuracy: number | null;
+  trainedAt: string | null;
+  samplesUsed: number;
+  nextTrainingDue: string | null;
+  progress: number | null;
+}
+
+export interface AccuracyPoint {
+  version: string;
+  accuracy: number;
+  date: string;
+}
+
+export interface ConfusionMatrix {
+  truePositive: number;
+  falsePositive: number;
+  trueNegative: number;
+  falseNegative: number;
+}
+
+export interface Misclassification {
+  predicted: string;
+  actual: string;
+  count: number;
+}
+
+export interface ModelMetrics {
+  accuracyHistory: AccuracyPoint[];
+  confusionMatrix: ConfusionMatrix;
+  topMisclassifications: Misclassification[];
+}
+
+export interface RetrainResponse {
+  jobId: string;
+  estimatedMinutes: number;
+  status: string;
+}
+
+export async function getModels(): Promise<MLModel[]> {
+  const res = await apiFetch<{ models: MLModel[] }>("/api/v1/admin/models");
+  return Array.isArray(res) ? res : res?.models ?? [];
+}
+
+export function retrainModel(id: string): Promise<RetrainResponse> {
+  return apiPost<RetrainResponse>(`/api/v1/admin/models/${id}/retrain`, {});
+}
+
+export function getModelMetrics(id: string): Promise<ModelMetrics> {
+  return apiFetch<ModelMetrics>(`/api/v1/admin/models/${id}/metrics`);
+}
+
+// ── Self-Service Onboarding ───────────────────────────
+
+export interface SignupRequest {
+  facilityName: string;
+  facilityType: string;
+  contactName: string;
+  contactEmail: string;
+  password: string;
+}
+
+export interface SignupResponse {
+  facilityId: string;
+  operatorId: string;
+  apiKey: string;
+  loginUrl: string;
+}
+
+export interface OnboardingStep {
+  step: string;
+  completed: boolean;
+  completedAt: string | null;
+}
+
+export interface OnboardingStatus {
+  steps: OnboardingStep[];
+  completionPct: number;
+}
+
+export function signup(data: SignupRequest): Promise<SignupResponse> {
+  return apiPost<SignupResponse>("/api/v1/onboarding/signup", data);
+}
+
+export function getOnboardingStatus(facilityId: string): Promise<OnboardingStatus> {
+  return apiFetch<OnboardingStatus>(`/api/v1/onboarding/status/${facilityId}`);
+}
+
+// ── Alerting Integrations ─────────────────────────────
+
+export interface AlertIntegration {
+  id: string;
+  type: "slack" | "pagerduty" | "email";
+  name: string;
+  config: Record<string, unknown>;
+  enabled: boolean;
+  triggerSeverity: number;
+  lastFiredAt: string | null;
+  createdAt: string;
+}
+
+export async function getIntegrations(): Promise<AlertIntegration[]> {
+  const res = await apiFetch<{ integrations: AlertIntegration[] }>("/api/v1/admin/integrations");
+  return Array.isArray(res) ? res : res?.integrations ?? [];
+}
+
+export function createIntegration(data: {
+  type: string;
+  name: string;
+  config: Record<string, unknown>;
+  trigger_severity: number;
+  enabled?: boolean;
+}): Promise<AlertIntegration> {
+  return apiPost<AlertIntegration>("/api/v1/admin/integrations", data);
+}
+
+export function updateIntegration(
+  id: string,
+  data: Partial<{ name: string; config: Record<string, unknown>; enabled: boolean; trigger_severity: number }>,
+): Promise<AlertIntegration> {
+  return apiPatch<AlertIntegration>(`/api/v1/admin/integrations/${id}`, data);
+}
+
+export function deleteIntegration(id: string): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(`/api/v1/admin/integrations/${id}`);
+}
+
+export function testIntegration(id: string): Promise<{ success: boolean; message: string }> {
+  return apiPost<{ success: boolean; message: string }>(`/api/v1/admin/integrations/${id}/test`, {});
+}
+
+// ── Custom Alert Rules ────────────────────────────────
+
+export interface AlertRuleConditions {
+  zoneType?: string;
+  densityAbove?: number;
+  timeWindow?: { start: string; end: string };
+  days?: string[];
+}
+
+export interface AlertRuleAction {
+  alertType: string;
+  severity: number;
+  message: string;
+}
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  conditions: AlertRuleConditions;
+  action: AlertRuleAction;
+  cooldownMins: number;
+  lastTriggeredAt: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export async function getAlertRules(): Promise<AlertRule[]> {
+  const res = await apiFetch<{ rules: AlertRule[] }>("/api/v1/admin/alert-rules");
+  return Array.isArray(res) ? res : res?.rules ?? [];
+}
+
+export function createAlertRule(data: {
+  name: string;
+  conditions: Record<string, unknown>;
+  action: Record<string, unknown>;
+  cooldown_mins?: number;
+  enabled?: boolean;
+}): Promise<AlertRule> {
+  return apiPost<AlertRule>("/api/v1/admin/alert-rules", data);
+}
+
+export function updateAlertRule(
+  id: string,
+  data: Partial<{ name: string; conditions: Record<string, unknown>; action: Record<string, unknown>; cooldown_mins: number; enabled: boolean }>,
+): Promise<AlertRule> {
+  return apiPatch<AlertRule>(`/api/v1/admin/alert-rules/${id}`, data);
+}
+
+export function deleteAlertRule(id: string): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(`/api/v1/admin/alert-rules/${id}`);
+}
+
+export function toggleAlertRule(id: string): Promise<AlertRule> {
+  return apiPost<AlertRule>(`/api/v1/admin/alert-rules/${id}/toggle`, {});
 }

@@ -86,8 +86,197 @@ const MOCK_BENCHMARKS = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Mock trend data generator for dev mode
+// ---------------------------------------------------------------------------
+function generateMockTrends(metric: string, periodDays: number) {
+  const now = new Date();
+  const data: any[] = [];
+  const baseValues: Record<string, { base: number; variance: number; min: number; max: number }> = {
+    density: { base: 52, variance: 18, min: 8, max: 95 },
+    incidents: { base: 15, variance: 8, min: 2, max: 35 },
+    queue_wait: { base: 7.2, variance: 3.5, min: 1.5, max: 18 },
+    scores: { base: 820, variance: 80, min: 650, max: 980 },
+  };
+  const cfg = baseValues[metric] ?? baseValues.density;
+
+  for (let i = periodDays - 1; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    // Add slight upward trend + noise
+    const trendFactor = 1 + (periodDays - i) * 0.003;
+    const noise = (Math.random() - 0.5) * cfg.variance * 2;
+    const value = Math.max(cfg.min, Math.min(cfg.max, Math.round((cfg.base * trendFactor + noise) * 10) / 10));
+    const min = Math.max(cfg.min, Math.round((value - cfg.variance * 0.8) * 10) / 10);
+    const max = Math.min(cfg.max, Math.round((value + cfg.variance * 0.8) * 10) / 10);
+    data.push({ date: dateStr, value, min, max, avg: value });
+  }
+
+  // Compute comparison
+  const half = Math.floor(data.length / 2);
+  const firstHalf = data.slice(0, half);
+  const secondHalf = data.slice(half);
+  const prevAvg = firstHalf.length > 0
+    ? Math.round((firstHalf.reduce((s: number, d: any) => s + d.value, 0) / firstHalf.length) * 10) / 10
+    : 0;
+  const currAvg = secondHalf.length > 0
+    ? Math.round((secondHalf.reduce((s: number, d: any) => s + d.value, 0) / secondHalf.length) * 10) / 10
+    : 0;
+  const changePct = prevAvg > 0
+    ? Math.round(((currAvg - prevAvg) / prevAvg) * 1000) / 10
+    : 0;
+
+  return {
+    metric,
+    period: `${periodDays}d`,
+    data,
+    comparison: {
+      previous_period_avg: prevAvg,
+      current_period_avg: currAvg,
+      change_pct: changePct,
+      trend: changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat',
+    },
+  };
+}
+
 export default async function analyticsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.addHook('preHandler', authMiddleware);
+
+  // ------------------------------------------------------------------
+  // GET /api/v1/analytics/trends
+  // ------------------------------------------------------------------
+  fastify.get('/api/v1/analytics/trends', async (request, reply) => {
+    const airportId = request.operator!.airport_id;
+    const isDev = process.env.NODE_ENV === 'development';
+    const { metric = 'density', period = '7d', zone_id } = request.query as {
+      metric?: string;
+      period?: string;
+      zone_id?: string;
+    };
+
+    const periodMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
+    const periodDays = periodMap[period] ?? 7;
+
+    try {
+      let rows: any[] = [];
+
+      if (metric === 'density') {
+        rows = await sql`
+          SELECT
+            DATE_TRUNC('day', zd.time)::date AS date,
+            AVG(zd.density_pct)::numeric(10,1) AS value,
+            MIN(zd.density_pct)::numeric(10,1) AS min,
+            MAX(zd.density_pct)::numeric(10,1) AS max,
+            AVG(zd.density_pct)::numeric(10,1) AS avg
+          FROM zone_density zd
+          JOIN zones z ON z.id = zd.zone_id
+          JOIN terminals t ON t.id = z.terminal_id
+          WHERE t.airport_id = ${airportId}
+            AND zd.time >= NOW() - (${periodDays}::int || ' days')::interval
+            ${zone_id ? sql`AND zd.zone_id = ${zone_id}` : sql``}
+          GROUP BY DATE_TRUNC('day', zd.time)::date
+          ORDER BY date
+        `.catch(() => []);
+      } else if (metric === 'incidents') {
+        rows = await sql`
+          SELECT
+            DATE_TRUNC('day', ae.created_at)::date AS date,
+            COUNT(*)::numeric AS value,
+            MIN(ae.severity)::numeric AS min,
+            MAX(ae.severity)::numeric AS max,
+            AVG(ae.severity)::numeric(10,1) AS avg
+          FROM anomaly_events ae
+          WHERE ae.airport_id = ${airportId}
+            AND ae.created_at >= NOW() - (${periodDays}::int || ' days')::interval
+            ${zone_id ? sql`AND ae.zone_id = ${zone_id}` : sql``}
+          GROUP BY DATE_TRUNC('day', ae.created_at)::date
+          ORDER BY date
+        `.catch(() => []);
+      } else if (metric === 'queue_wait') {
+        rows = await sql`
+          SELECT
+            DATE_TRUNC('day', qm.time)::date AS date,
+            AVG(qm.wait_time_mins)::numeric(10,1) AS value,
+            MIN(qm.wait_time_mins)::numeric(10,1) AS min,
+            MAX(qm.wait_time_mins)::numeric(10,1) AS max,
+            AVG(qm.wait_time_mins)::numeric(10,1) AS avg
+          FROM queue_metrics qm
+          WHERE qm.time >= NOW() - (${periodDays}::int || ' days')::interval
+            ${zone_id ? sql`AND qm.zone_id = ${zone_id}` : sql``}
+          GROUP BY DATE_TRUNC('day', qm.time)::date
+          ORDER BY date
+        `.catch(() => []);
+      } else if (metric === 'scores') {
+        rows = await sql`
+          SELECT
+            ss.shift_date AS date,
+            AVG(ss.total_score)::numeric(10,1) AS value,
+            MIN(ss.total_score)::numeric(10,1) AS min,
+            MAX(ss.total_score)::numeric(10,1) AS max,
+            AVG(ss.total_score)::numeric(10,1) AS avg
+          FROM shift_scores ss
+          WHERE ss.airport_id = ${airportId}
+            AND ss.shift_date >= CURRENT_DATE - (${periodDays}::int || ' days')::interval
+          GROUP BY ss.shift_date
+          ORDER BY date
+        `.catch(() => []);
+      }
+
+      if (rows.length > 0) {
+        const data = rows.map((r: any) => ({
+          date: typeof r.date === 'string' ? r.date : r.date?.toISOString?.()?.split('T')[0] ?? r.date,
+          value: parseFloat(r.value) || 0,
+          min: parseFloat(r.min) || 0,
+          max: parseFloat(r.max) || 0,
+          avg: parseFloat(r.avg) || 0,
+        }));
+
+        const half = Math.floor(data.length / 2);
+        const firstHalf = data.slice(0, half);
+        const secondHalf = data.slice(half);
+        const prevAvg = firstHalf.length > 0
+          ? Math.round((firstHalf.reduce((s, d) => s + d.value, 0) / firstHalf.length) * 10) / 10
+          : 0;
+        const currAvg = secondHalf.length > 0
+          ? Math.round((secondHalf.reduce((s, d) => s + d.value, 0) / secondHalf.length) * 10) / 10
+          : 0;
+        const changePct = prevAvg > 0
+          ? Math.round(((currAvg - prevAvg) / prevAvg) * 1000) / 10
+          : 0;
+
+        return reply.send({
+          metric,
+          period,
+          data,
+          comparison: {
+            previous_period_avg: prevAvg,
+            current_period_avg: currAvg,
+            change_pct: changePct,
+            trend: changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat',
+          },
+        });
+      }
+
+      // Dev mode fallback with mock data
+      if (isDev) {
+        return reply.send(generateMockTrends(metric, periodDays));
+      }
+
+      return reply.send({
+        metric,
+        period,
+        data: [],
+        comparison: { previous_period_avg: 0, current_period_avg: 0, change_pct: 0, trend: 'flat' },
+      });
+    } catch (err) {
+      fastify.log.error(err, 'Failed to compute trend analytics');
+      if (isDev) {
+        return reply.send(generateMockTrends(metric, periodDays));
+      }
+      return reply.code(500).send({ error: 'Failed to compute trend analytics' });
+    }
+  });
 
   // ------------------------------------------------------------------
   // GET /api/v1/analytics/benchmarks

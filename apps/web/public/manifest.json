@@ -1,0 +1,12 @@
+{
+  "name": "Soterion Platform",
+  "short_name": "Soterion",
+  "description": "LiDAR spatial intelligence platform",
+  "start_url": "/mobile",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#f59e0b",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

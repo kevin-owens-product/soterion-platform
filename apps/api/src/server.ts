@@ -41,6 +41,7 @@ import analyticsRoutes from './routes/analytics.js';
 import predictionRoutes from './routes/predictions.js';
 import intelligenceRoutes from './routes/intelligence.js';
 import playbookRoutes from './routes/playbooks.js';
+import shiftRoutes from './routes/shifts.js';
 
 // Admin route modules (Phase 9)
 import adminFacilitiesRoutes from './routes/admin/facilities.js';
@@ -52,6 +53,10 @@ import adminSecurityRoutes from './routes/admin/security.js';
 import adminComplianceRoutes from './routes/admin/compliance.js';
 import adminRetentionRoutes from './routes/admin/retention.js';
 import reportRoutes from './routes/reports.js';
+import trainingRoutes from './routes/training.js';
+import onboardingRoutes from './routes/onboarding.js';
+import integrationRoutes from './routes/integrations.js';
+import alertRuleRoutes from './routes/alertRules.js';
 
 // RBAC + Session middleware (Phase 9)
 import { loadRbacCache } from './middleware/rbac.js';
@@ -192,6 +197,7 @@ async function buildServer() {
   await fastify.register(predictionRoutes);
   await fastify.register(intelligenceRoutes);
   await fastify.register(playbookRoutes);
+  await fastify.register(shiftRoutes);
   await fastify.register(liveWebSocket);
 
   // --- Register admin route modules (Phase 9) ---
@@ -203,9 +209,15 @@ async function buildServer() {
   await fastify.register(adminSecurityRoutes);
   await fastify.register(adminComplianceRoutes);
   await fastify.register(adminRetentionRoutes);
+  await fastify.register(integrationRoutes);
+  await fastify.register(alertRuleRoutes);
 
   // --- Register report routes (Compliance Report Generator) ---
   await fastify.register(reportRoutes);
+
+  // --- Register ML training + onboarding routes ---
+  await fastify.register(trainingRoutes);
+  await fastify.register(onboardingRoutes);
 
   return fastify;
 }
@@ -323,6 +335,9 @@ async function start() {
     fastify.log.info('  WS   /ws/alerts');
     fastify.log.info('  --- Analytics ---');
     fastify.log.info('  GET  /api/v1/analytics/roi');
+    fastify.log.info('  GET  /api/v1/analytics/trends');
+    fastify.log.info('  --- Shifts ---');
+    fastify.log.info('  GET  /api/v1/shifts/handoff');
     fastify.log.info('  --- Facilities (Phase 8 Multi-Vertical) ---');
     fastify.log.info('  GET    /api/v1/facilities');
     fastify.log.info('  GET    /api/v1/facilities/:id');
@@ -365,12 +380,31 @@ async function start() {
     fastify.log.info('  GET    /api/v1/admin/retention');
     fastify.log.info('  POST   /api/v1/admin/retention');
     fastify.log.info('  GET    /api/v1/admin/retention/status');
+    fastify.log.info('  --- Alerting Integrations ---');
+    fastify.log.info('  GET    /api/v1/admin/integrations');
+    fastify.log.info('  POST   /api/v1/admin/integrations');
+    fastify.log.info('  PATCH  /api/v1/admin/integrations/:id');
+    fastify.log.info('  DELETE /api/v1/admin/integrations/:id');
+    fastify.log.info('  POST   /api/v1/admin/integrations/:id/test');
+    fastify.log.info('  --- Custom Alert Rules ---');
+    fastify.log.info('  GET    /api/v1/admin/alert-rules');
+    fastify.log.info('  POST   /api/v1/admin/alert-rules');
+    fastify.log.info('  PATCH  /api/v1/admin/alert-rules/:id');
+    fastify.log.info('  DELETE /api/v1/admin/alert-rules/:id');
+    fastify.log.info('  POST   /api/v1/admin/alert-rules/:id/toggle');
     fastify.log.info('  --- Cross-Zone Intelligence ---');
     fastify.log.info('  GET    /api/v1/intelligence/flow-anomalies');
     fastify.log.info('  --- Incident Response Playbooks ---');
     fastify.log.info('  GET    /api/v1/playbooks');
     fastify.log.info('  --- Reports (Compliance Report Generator) ---');
     fastify.log.info('  GET    /api/v1/reports/compliance');
+    fastify.log.info('  --- ML Model Training Pipeline ---');
+    fastify.log.info('  GET    /api/v1/admin/models');
+    fastify.log.info('  POST   /api/v1/admin/models/:id/retrain');
+    fastify.log.info('  GET    /api/v1/admin/models/:id/metrics');
+    fastify.log.info('  --- Self-Service Onboarding ---');
+    fastify.log.info('  POST   /api/v1/onboarding/signup');
+    fastify.log.info('  GET    /api/v1/onboarding/status/:facilityId');
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

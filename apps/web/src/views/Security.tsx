@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { W10_IncidentReplay } from "@/widgets/W10_IncidentReplay";
 import { W02_ThreatFeed } from "@/widgets/W02_ThreatFeed";
+import { W13_CrossZoneIntel } from "@/widgets/W13_CrossZoneIntel";
+import { W14_ResponsePlaybook } from "@/widgets/W14_ResponsePlaybook";
 import { WidgetErrorBoundary } from "@/components/WidgetErrorBoundary";
 import { useQuery } from "@tanstack/react-query";
 import { getAlertStats } from "@/lib/api";
@@ -219,6 +221,18 @@ export function Security() {
               <ResponseTimePanel />
             </WidgetErrorBoundary>
           </div>
+        </div>
+
+        {/* W-13 Cross-Zone Intelligence + W-14 Response Playbook */}
+        <div className="col-span-6" style={{ minHeight: "320px" }}>
+          <WidgetErrorBoundary name="Cross-Zone Intelligence">
+            <W13_CrossZoneIntel />
+          </WidgetErrorBoundary>
+        </div>
+        <div className="col-span-6" style={{ minHeight: "320px" }}>
+          <WidgetErrorBoundary name="Response Playbook">
+            <W14_ResponsePlaybook />
+          </WidgetErrorBoundary>
         </div>
 
         {/* W-02 Threat Feed - bottom, full width */}

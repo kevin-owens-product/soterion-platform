@@ -88,6 +88,7 @@ export function AdminDashboard() {
           <div className="animate-pulse font-mono text-sm text-gray-500">Loading dashboard...</div>
         </div>
       ) : (
+        <>
         {/* ROI Calculator - prominent section */}
         <div className="mb-6">
           <W12_ROICalculator />
@@ -192,6 +193,7 @@ export function AdminDashboard() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );

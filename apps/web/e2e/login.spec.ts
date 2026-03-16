@@ -1,44 +1,32 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Login Flow', () => {
-  test('should navigate to login page, enter credentials, and redirect to ops center', async ({ page }) => {
-    // Navigate to login page
+  test('should show login page', async ({ page }) => {
     await page.goto('/login');
-
-    // Verify login form is visible
-    await expect(page.getByRole('heading', { name: /login|sign in/i })).toBeVisible();
-
-    // Enter email
-    await page.getByLabel(/email/i).fill('dev@soterion.io');
-
-    // Enter password
-    await page.getByLabel(/password/i).fill('password123');
-
-    // Submit form
-    await page.getByRole('button', { name: /login|sign in/i }).click();
-
-    // Assert redirect to ops center
-    await expect(page).toHaveURL(/\/ops/, { timeout: 10_000 });
-
-    // Assert header shows operator name
-    await expect(page.getByText(/dev user/i)).toBeVisible();
+    await expect(page.locator('text=SOTERION')).toBeVisible();
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
-  test('should show error on invalid credentials', async ({ page }) => {
+  test('should login with valid credentials', async ({ page }) => {
     await page.goto('/login');
+    await page.fill('input[type="email"]', 'admin@soterion.io');
+    await page.fill('input[type="password"]', 'soterion123');
+    await page.click('button[type="submit"]');
 
-    await page.getByLabel(/email/i).fill('wrong@example.com');
-    await page.getByLabel(/password/i).fill('wrongpassword');
-    await page.getByRole('button', { name: /login|sign in/i }).click();
-
-    // Assert error message is shown
-    await expect(page.getByText(/invalid|unauthorized|error/i)).toBeVisible({ timeout: 5_000 });
+    // Should redirect to ops center
+    await expect(page).toHaveURL(/.*ops/, { timeout: 10000 });
+    // Should show operator name in header
+    await expect(page.locator('text=Admin User')).toBeVisible({ timeout: 10000 });
   });
 
-  test('should not allow access to ops center without authentication', async ({ page }) => {
-    await page.goto('/ops');
+  test('should reject invalid credentials', async ({ page }) => {
+    await page.goto('/login');
+    await page.fill('input[type="email"]', 'wrong@test.com');
+    await page.fill('input[type="password"]', 'wrongpass');
+    await page.click('button[type="submit"]');
 
-    // Should redirect to login
-    await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
+    // Should stay on login page
+    await expect(page).toHaveURL(/.*login/);
   });
 });

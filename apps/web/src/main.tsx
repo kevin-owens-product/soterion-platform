@@ -8,6 +8,9 @@ import {
 } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Login } from "@/views/Login";
+import { Demo } from "@/views/Demo";
+import { DemoLanding } from "@/views/DemoLanding";
+import { Mobile } from "@/views/Mobile";
 import { OpsCenter } from "@/views/OpsCenter";
 import { Security } from "@/views/Security";
 import { Leaderboard } from "@/views/Leaderboard";
@@ -21,6 +24,14 @@ import { ApiKeyManagement } from "@/views/admin/ApiKeyManagement";
 import { SecurityDashboard } from "@/views/admin/SecurityDashboard";
 import { ComplianceDashboard } from "@/views/admin/ComplianceDashboard";
 import { ComplianceReport } from "@/views/admin/ComplianceReport";
+import { Benchmarking } from "@/views/admin/Benchmarking";
+import { Integrations } from "@/views/admin/Integrations";
+import { AlertRules } from "@/views/admin/AlertRules";
+import { ModelTraining } from "@/views/admin/ModelTraining";
+import { ApiDocs } from "@/views/ApiDocs";
+import { Signup } from "@/views/Signup";
+import { ShiftHandoff } from "@/views/ShiftHandoff";
+import { Analytics } from "@/views/Analytics";
 import "@/styles/tokens.css";
 
 const queryClient = new QueryClient({
@@ -37,6 +48,26 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/demo",
+    element: <Demo />,
+  },
+  {
+    path: "/mobile",
+    element: <Mobile />,
+  },
+  {
+    path: "/welcome",
+    element: <DemoLanding />,
+  },
+  {
+    path: "/docs/api",
+    element: <ApiDocs />,
+  },
+  {
+    path: "/signup",
+    element: <Signup />,
   },
   {
     path: "/",
@@ -92,6 +123,8 @@ const router = createBrowserRouter([
       { path: "security", element: <Security /> },
       { path: "leaderboard", element: <Leaderboard /> },
       { path: "sensors", element: <Sensors /> },
+      { path: "shift-handoff", element: <ShiftHandoff /> },
+      { path: "analytics", element: <Analytics /> },
       {
         path: "admin",
         element: <AdminLayout />,
@@ -105,6 +138,10 @@ const router = createBrowserRouter([
           { path: "security", element: <SecurityDashboard /> },
           { path: "compliance", element: <ComplianceDashboard /> },
           { path: "reports", element: <ComplianceReport /> },
+          { path: "benchmarking", element: <Benchmarking /> },
+          { path: "integrations", element: <Integrations /> },
+          { path: "alert-rules", element: <AlertRules /> },
+          { path: "model-training", element: <ModelTraining /> },
           { path: "onboarding", element: <OnboardingWizard /> },
         ],
       },

@@ -41,7 +41,7 @@ function intensityColor(v: number): string {
 /* ── component ───────────────────────────────────────── */
 
 export function W09_CommercialIntel() {
-  const [compare] = useState<"day">("day");
+  const [_compare] = useState<"day">("day");
 
   const maxToday = Math.max(...MOCK_DATA.map((d) => d.today), 1);
 

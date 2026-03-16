@@ -37,7 +37,7 @@ const RISK_CONFIG: Record<
 };
 
 function RiskBadge({ risk }: { risk: string }) {
-  const cfg = RISK_CONFIG[risk] ?? RISK_CONFIG.LOW;
+  const cfg = (RISK_CONFIG as Record<string, (typeof RISK_CONFIG)["LOW"]>)[risk] ?? RISK_CONFIG.LOW; if (!cfg) return null;
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${cfg.badge}`}
@@ -173,7 +173,7 @@ function ActionsPanel({ actions }: { actions: string[] }) {
 
 function PredictionCard({ prediction }: { prediction: SurgePrediction }) {
   const risk = prediction.surgeRisk;
-  const cfg = RISK_CONFIG[risk] ?? RISK_CONFIG.LOW;
+  const cfg = (RISK_CONFIG as Record<string, (typeof RISK_CONFIG)["LOW"]>)[risk] ?? RISK_CONFIG.LOW; if (!cfg) return null;
 
   return (
     <div

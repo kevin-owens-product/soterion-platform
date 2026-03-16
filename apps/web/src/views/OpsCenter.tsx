@@ -8,6 +8,7 @@ import { W08_FlowFunnel } from "@/widgets/W08_FlowFunnel";
 import { W11_SurgePrediction } from "@/widgets/W11_SurgePrediction";
 import { W12_ROICalculator } from "@/widgets/W12_ROICalculator";
 import { WidgetErrorBoundary } from "@/components/WidgetErrorBoundary";
+import { DashboardCustomizer, useWidgetPrefs } from "@/components/DashboardCustomizer";
 import { useMissions } from "@/hooks/useMissions";
 import { useAlertsStore } from "@/store/alertsStore";
 import { useFacilityStore } from "@/store/facilityStore";
@@ -78,7 +79,15 @@ function MissionsPanel() {
   );
 }
 
-function OpsHeader() {
+function OpsHeader({
+  prefs,
+  onToggle,
+  onReset,
+}: {
+  prefs: ReturnType<typeof useWidgetPrefs>["prefs"];
+  onToggle: ReturnType<typeof useWidgetPrefs>["update"];
+  onReset: ReturnType<typeof useWidgetPrefs>["reset"];
+}) {
   const facility = useFacilityStore((s) => s.facility);
   const unacknowledgedCount = useAlertsStore((s) => s.unacknowledgedCount);
   const [now, setNow] = useState(new Date());
@@ -125,6 +134,11 @@ function OpsHeader() {
             </span>
           </div>
         )}
+        <DashboardCustomizer
+          prefs={prefs}
+          onToggle={onToggle}
+          onReset={onReset}
+        />
         <div className="text-right">
           <span className="text-sm font-mono text-soterion-accent tabular-nums block leading-none">
             {timeStr}
@@ -137,9 +151,25 @@ function OpsHeader() {
 }
 
 export function OpsCenter() {
+  const { prefs, update, reset } = useWidgetPrefs();
+
+  // Compute which row-1 widgets are visible for dynamic column sizing
+  const r1Twin = prefs.digitalTwin;
+  const r1Feed = prefs.threatFeed;
+  const r1TwinSpan = r1Twin && r1Feed ? 8 : 12;
+  const r1FeedSpan = r1Twin && r1Feed ? 4 : 12;
+
+  // Row 2 visible widgets
+  const r2Widgets = [prefs.surgePrediction, prefs.zonePanel, prefs.heatmap].filter(Boolean).length;
+  const r2Span = r2Widgets > 0 ? Math.floor(12 / r2Widgets) : 12;
+
+  // Row 3 visible widgets
+  const r3Widgets = [prefs.shiftScorecard, prefs.flowFunnel, true /* missions always shown */].filter(Boolean).length;
+  const r3Span = r3Widgets > 0 ? Math.floor(12 / r3Widgets) : 12;
+
   return (
     <div>
-      <OpsHeader />
+      <OpsHeader prefs={prefs} onToggle={update} onReset={reset} />
 
       {/* Widget grid: 12-column CSS grid */}
       <div
@@ -150,46 +180,60 @@ export function OpsCenter() {
         }}
       >
         {/* Row 1: W-01 Digital Twin (wide) + W-02 Threat Feed (sidebar) */}
-        <div className="col-span-8" style={{ minHeight: "360px" }}>
-          <WidgetErrorBoundary name="Digital Twin">
-            <W01_DigitalTwin />
-          </WidgetErrorBoundary>
-        </div>
-        <div className="col-span-4" style={{ minHeight: "360px" }}>
-          <WidgetErrorBoundary name="Threat Feed">
-            <W02_ThreatFeed compact />
-          </WidgetErrorBoundary>
-        </div>
+        {r1Twin && (
+          <div className={`col-span-${r1TwinSpan}`} style={{ minHeight: "360px", gridColumn: `span ${r1TwinSpan}` }}>
+            <WidgetErrorBoundary name="Digital Twin">
+              <W01_DigitalTwin />
+            </WidgetErrorBoundary>
+          </div>
+        )}
+        {r1Feed && (
+          <div className={`col-span-${r1FeedSpan}`} style={{ minHeight: "360px", gridColumn: `span ${r1FeedSpan}` }}>
+            <WidgetErrorBoundary name="Threat Feed">
+              <W02_ThreatFeed compact />
+            </WidgetErrorBoundary>
+          </div>
+        )}
 
-        {/* Row 2: W-11 Surge Prediction (prominent banner) + W-03 Zone Panel */}
-        <div className="col-span-5" style={{ minHeight: "320px" }}>
-          <WidgetErrorBoundary name="Surge Prediction">
-            <W11_SurgePrediction />
-          </WidgetErrorBoundary>
-        </div>
-        <div className="col-span-3" style={{ minHeight: "320px" }}>
-          <WidgetErrorBoundary name="Zone Panel">
-            <W03_ZonePanel />
-          </WidgetErrorBoundary>
-        </div>
-        <div className="col-span-4" style={{ minHeight: "320px" }}>
-          <WidgetErrorBoundary name="Heatmap">
-            <W04_Heatmap />
-          </WidgetErrorBoundary>
-        </div>
+        {/* Row 2: W-11 Surge Prediction + W-03 Zone Panel + W-04 Heatmap */}
+        {prefs.surgePrediction && (
+          <div style={{ minHeight: "320px", gridColumn: r2Widgets === 3 ? "span 5" : `span ${r2Span}` }}>
+            <WidgetErrorBoundary name="Surge Prediction">
+              <W11_SurgePrediction />
+            </WidgetErrorBoundary>
+          </div>
+        )}
+        {prefs.zonePanel && (
+          <div style={{ minHeight: "320px", gridColumn: r2Widgets === 3 ? "span 3" : `span ${r2Span}` }}>
+            <WidgetErrorBoundary name="Zone Panel">
+              <W03_ZonePanel />
+            </WidgetErrorBoundary>
+          </div>
+        )}
+        {prefs.heatmap && (
+          <div style={{ minHeight: "320px", gridColumn: r2Widgets === 3 ? "span 4" : `span ${r2Span}` }}>
+            <WidgetErrorBoundary name="Heatmap">
+              <W04_Heatmap />
+            </WidgetErrorBoundary>
+          </div>
+        )}
 
         {/* Row 3: W-06 Shift Scorecard + W-08 Flow Funnel + Missions */}
-        <div className="col-span-4" style={{ minHeight: "260px" }}>
-          <WidgetErrorBoundary name="Shift Scorecard">
-            <W06_ShiftScorecard />
-          </WidgetErrorBoundary>
-        </div>
-        <div className="col-span-4" style={{ minHeight: "260px" }}>
-          <WidgetErrorBoundary name="Flow Funnel">
-            <W08_FlowFunnel />
-          </WidgetErrorBoundary>
-        </div>
-        <div className="col-span-4" style={{ minHeight: "260px" }}>
+        {prefs.shiftScorecard && (
+          <div style={{ minHeight: "260px", gridColumn: `span ${r3Span}` }}>
+            <WidgetErrorBoundary name="Shift Scorecard">
+              <W06_ShiftScorecard />
+            </WidgetErrorBoundary>
+          </div>
+        )}
+        {prefs.flowFunnel && (
+          <div style={{ minHeight: "260px", gridColumn: `span ${r3Span}` }}>
+            <WidgetErrorBoundary name="Flow Funnel">
+              <W08_FlowFunnel />
+            </WidgetErrorBoundary>
+          </div>
+        )}
+        <div style={{ minHeight: "260px", gridColumn: `span ${r3Span}` }}>
           <WidgetErrorBoundary name="Missions">
             <MissionsPanel />
           </WidgetErrorBoundary>
@@ -197,11 +241,13 @@ export function OpsCenter() {
       </div>
 
       {/* ROI Calculator - collapsible at bottom */}
-      <div className="mt-4">
-        <WidgetErrorBoundary name="ROI Calculator">
-          <W12_ROICalculator collapsible />
-        </WidgetErrorBoundary>
-      </div>
+      {prefs.roiCalculator && (
+        <div className="mt-4">
+          <WidgetErrorBoundary name="ROI Calculator">
+            <W12_ROICalculator collapsible />
+          </WidgetErrorBoundary>
+        </div>
+      )}
     </div>
   );
 }
