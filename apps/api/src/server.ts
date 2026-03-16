@@ -225,6 +225,19 @@ async function buildServer() {
 async function start() {
   const fastify = await buildServer();
 
+  // --- Auto-migrate on startup ---
+  try {
+    const { migrate } = await import('./db/client.js');
+    const applied = await migrate();
+    if (applied.length > 0) {
+      fastify.log.info(`Applied ${applied.length} migrations: ${applied.join(', ')}`);
+    } else {
+      fastify.log.info('Database schema up to date');
+    }
+  } catch (err) {
+    fastify.log.warn({ err }, 'Auto-migration failed (non-fatal - tables may already exist)');
+  }
+
   // --- Start BullMQ workers ---
 
   const anomalyWorker = startAnomalyProcessor();

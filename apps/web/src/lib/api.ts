@@ -20,7 +20,7 @@ import * as mockApi from "./mockApi";
 
 export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
-const BASE_URL = "";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("soterion_token");
