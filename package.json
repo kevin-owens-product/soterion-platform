@@ -1,0 +1,14 @@
+{
+  "name": "soterion",
+  "private": true,
+  "workspaces": ["apps/*", "services/*"],
+  "scripts": {
+    "dev:web": "npm -w @soterion/web run dev",
+    "dev:api": "npm -w @soterion/api run dev",
+    "dev:ml": "cd services/ml && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "build:web": "npm -w @soterion/web run build",
+    "build:api": "npm -w @soterion/api run build",
+    "lint": "npm -w @soterion/web run lint && npm -w @soterion/api run lint",
+    "typecheck": "npm -w @soterion/web run typecheck && npm -w @soterion/api run typecheck"
+  }
+}
