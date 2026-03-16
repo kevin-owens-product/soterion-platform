@@ -118,6 +118,7 @@ export class WSClient {
 
 import type { AnomalyEvent } from "@/types";
 import { camelizeKeys } from "@/lib/camelize";
+import { DEMO_MODE } from "@/lib/api";
 
 function getWsBase(): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -141,6 +142,11 @@ export function connectAlerts(
     onOpen: onConnected,
     onClose: onDisconnected,
   });
+  if (DEMO_MODE) {
+    // In demo mode, don't attempt WebSocket connections
+    onConnected?.();
+    return client;
+  }
   try {
     client.connect();
   } catch (err) {
@@ -162,6 +168,10 @@ export function connectSensor(
       }
     },
   });
+  if (DEMO_MODE) {
+    // In demo mode, don't attempt WebSocket connections
+    return client;
+  }
   try {
     client.connect();
   } catch (err) {

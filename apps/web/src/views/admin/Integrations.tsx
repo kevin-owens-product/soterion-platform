@@ -310,11 +310,11 @@ export function Integrations() {
                   }`}
                   style={
                     form.triggerSeverity === s
-                      ? { color: SEVERITY_LABELS[s].color, borderColor: SEVERITY_LABELS[s].color, backgroundColor: SEVERITY_LABELS[s].color + "15" }
+                      ? { color: SEVERITY_LABELS[s]?.color, borderColor: SEVERITY_LABELS[s]?.color, backgroundColor: (SEVERITY_LABELS[s]?.color ?? "") + "15" }
                       : undefined
                   }
                 >
-                  {SEVERITY_LABELS[s].label}
+                  {SEVERITY_LABELS[s]?.label}
                 </button>
               ))}
             </div>
@@ -371,7 +371,7 @@ export function Integrations() {
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-[10px] font-mono text-gray-600">
                           Threshold:{" "}
-                          <span style={{ color: sev.color }}>{sev.label}+</span>
+                          <span style={{ color: sev?.color }}>{sev?.label}+</span>
                         </span>
                         {integration.lastFiredAt && (
                           <span className="text-[10px] font-mono text-gray-600">

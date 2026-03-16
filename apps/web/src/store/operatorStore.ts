@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Operator } from "@/types";
-import { login as apiLogin, getMe } from "@/lib/api";
+import { login as apiLogin, getMe, DEMO_MODE } from "@/lib/api";
 
 interface OperatorState {
   currentOperator: Operator | null;
@@ -17,12 +17,17 @@ interface OperatorState {
   checkAuth: () => boolean;
 }
 
+// In demo mode, ensure a token exists so auth guards pass
+if (DEMO_MODE && !localStorage.getItem("soterion_token")) {
+  localStorage.setItem("soterion_token", "demo-token");
+}
+
 export const useOperatorStore = create<OperatorState>((set, get) => ({
-  currentOperator: null,
+  currentOperator: DEMO_MODE ? { id: "op5", name: "Admin User", email: "admin@soterion.io", role: "admin", team: "Ops", airportId: "a1", facilityId: "f1", avatarUrl: null, shiftScoreAllTime: 5852, currentStreak: 3, badges: ["FIRST_DETECT"], createdAt: "2026-01-15T10:00:00Z" } as Operator : null,
   operators: [],
   loading: false,
   error: null,
-  isAuthenticated: !!localStorage.getItem("soterion_token"),
+  isAuthenticated: DEMO_MODE || !!localStorage.getItem("soterion_token"),
 
   setCurrentOperator: (operator) =>
     set({ currentOperator: operator, isAuthenticated: true }),
@@ -40,6 +45,16 @@ export const useOperatorStore = create<OperatorState>((set, get) => ({
         loading: false,
       });
     } catch (err) {
+      // In demo mode, if login still fails for some reason, force-succeed
+      if (DEMO_MODE) {
+        localStorage.setItem("soterion_token", "demo-token");
+        set({
+          currentOperator: { id: "op5", name: "Admin User", email: "admin@soterion.io", role: "admin", team: "Ops", airportId: "a1", facilityId: "f1", avatarUrl: null, shiftScoreAllTime: 5852, currentStreak: 3, badges: ["FIRST_DETECT"], createdAt: "2026-01-15T10:00:00Z" } as Operator,
+          isAuthenticated: true,
+          loading: false,
+        });
+        return;
+      }
       set({
         error: err instanceof Error ? err.message : "Login failed",
         loading: false,
@@ -59,12 +74,20 @@ export const useOperatorStore = create<OperatorState>((set, get) => ({
   },
 
   fetchProfile: async () => {
-    if (!get().isAuthenticated) return;
+    if (!get().isAuthenticated && !DEMO_MODE) return;
     set({ loading: true, error: null });
     try {
       const operator = await getMe();
-      set({ currentOperator: operator, loading: false });
+      set({ currentOperator: operator, isAuthenticated: true, loading: false });
     } catch (err) {
+      if (DEMO_MODE) {
+        set({
+          currentOperator: { id: "op5", name: "Admin User", email: "admin@soterion.io", role: "admin", team: "Ops", airportId: "a1", facilityId: "f1", avatarUrl: null, shiftScoreAllTime: 5852, currentStreak: 3, badges: ["FIRST_DETECT"], createdAt: "2026-01-15T10:00:00Z" } as Operator,
+          isAuthenticated: true,
+          loading: false,
+        });
+        return;
+      }
       // Don't auto-logout in dev - the token might be expired but dev bypass still works
       console.warn("fetchProfile failed:", err instanceof Error ? err.message : err);
       set({
@@ -75,6 +98,6 @@ export const useOperatorStore = create<OperatorState>((set, get) => ({
   },
 
   checkAuth: () => {
-    return !!localStorage.getItem("soterion_token");
+    return DEMO_MODE || !!localStorage.getItem("soterion_token");
   },
 }));

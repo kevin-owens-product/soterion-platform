@@ -16,6 +16,9 @@ import type {
   Operator,
 } from "@/types";
 import { camelizeKeys } from "@/lib/camelize";
+import * as mockApi from "./mockApi";
+
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
 const BASE_URL = "";
 
@@ -25,10 +28,102 @@ function getAuthHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
+// ── Demo Mode Router ──────────────────────────────────
+// Maps API paths to mockApi functions when VITE_DEMO_MODE=true
+function seg(p: string, index: number): string {
+  return p.split("/")[index] ?? "";
+}
+
+async function getDemoResponse<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method ?? "GET").toUpperCase();
+  const p = path.split("?")[0] ?? ""; // strip query string
+
+  // Auth
+  if (p === "/api/v1/auth/login") return mockApi.login() as Promise<T>;
+  if (p === "/api/v1/auth/refresh") return mockApi.refreshToken() as Promise<T>;
+  if (p === "/api/v1/operators/me") return mockApi.getMe() as Promise<T>;
+
+  // Alerts
+  if (p === "/api/v1/alerts/stats") return mockApi.getAlertStats() as Promise<T>;
+  if (p.match(/^\/api\/v1\/alerts\/[^/]+\/acknowledge$/)) return mockApi.acknowledgeAlert(seg(p, 4)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/alerts\/[^/]+\/escalate$/)) return mockApi.escalateAlert(seg(p, 4)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/alerts\/[^/]+$/)) return mockApi.getAlert(seg(p, 4)) as Promise<T>;
+  if (p === "/api/v1/alerts") return mockApi.getAlerts() as Promise<T>;
+
+  // Zones & Terminals
+  if (p === "/api/v1/zones" || p === "/api/v1/zones/") return mockApi.getZones() as Promise<T>;
+  if (p.match(/^\/api\/v1\/zones\/[^/]+$/)) return mockApi.getZone(seg(p, 4)) as Promise<T>;
+  if (p === "/api/v1/terminals") return mockApi.getTerminals() as Promise<T>;
+  if (p.match(/^\/api\/v1\/lidar\/zones\/[^/]+\/density$/)) return mockApi.getZoneDensity(seg(p, 5)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/lidar\/queue\//)) return mockApi.getQueueMetrics(seg(p, 5)) as Promise<T>;
+
+  // Sensors
+  if (p === "/api/v1/sensors") return mockApi.getSensors() as Promise<T>;
+  if (p.match(/^\/api\/v1\/sensors\/[^/]+$/)) return mockApi.getSensor(seg(p, 4)) as Promise<T>;
+
+  // Gamification
+  if (p === "/api/v1/scores/shift") return mockApi.getShiftScore() as Promise<T>;
+  if (p === "/api/v1/scores/history") return mockApi.getScoreHistory() as Promise<T>;
+  if (p === "/api/v1/leaderboard") return mockApi.getLeaderboard() as Promise<T>;
+  if (p === "/api/v1/badges/mine") return mockApi.getMyBadges() as Promise<T>;
+  if (p === "/api/v1/badges") return mockApi.getBadges() as Promise<T>;
+  if (p === "/api/v1/missions/progress") return mockApi.getMissionProgress() as Promise<T>;
+  if (p === "/api/v1/missions") return mockApi.getMissions() as Promise<T>;
+
+  // Predictions & Intelligence
+  if (p === "/api/v1/predictions/surge") return mockApi.getSurgePredictions() as Promise<T>;
+  if (p === "/api/v1/intelligence/flow-anomalies") return mockApi.getFlowAnomalies() as Promise<T>;
+  if (p === "/api/v1/playbooks") return mockApi.getPlaybooks() as Promise<T>;
+
+  // Facility
+  if (p === "/api/v1/facility/config") return mockApi.getFacilityConfig() as Promise<T>;
+  if (p === "/api/v1/facilities") return mockApi.getFacilities() as Promise<T>;
+  if (p.match(/^\/api\/v1\/facilities\/[^/]+$/)) return mockApi.getFacility(seg(p, 4)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/facilities\/[^/]+\/zones$/)) return mockApi.addFacilityZone(seg(p, 4), {}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/facilities\/[^/]+\/sensors$/)) return mockApi.addFacilitySensor(seg(p, 4), {}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/facilities\/[^/]+\/operators$/)) return mockApi.addFacilityOperator(seg(p, 4), {}) as Promise<T>;
+
+  // Analytics
+  if (p === "/api/v1/analytics/roi") return mockApi.getROIMetrics() as Promise<T>;
+  if (p === "/api/v1/analytics/benchmarks") return mockApi.getBenchmarks() as Promise<T>;
+  if (p.startsWith("/api/v1/analytics/trends")) return mockApi.getTrends() as Promise<T>;
+  if (p.startsWith("/api/v1/reports/compliance")) return mockApi.getComplianceReport() as Promise<T>;
+  if (p === "/api/v1/shifts/handoff") return mockApi.getShiftHandoff() as Promise<T>;
+
+  // Admin: Models
+  if (p === "/api/v1/admin/models") return mockApi.getModels() as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/models\/[^/]+\/retrain$/)) return mockApi.retrainModel(seg(p, 5)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/models\/[^/]+\/metrics$/)) return mockApi.getModelMetrics(seg(p, 5)) as Promise<T>;
+
+  // Admin: Integrations
+  if (p === "/api/v1/admin/integrations" && method === "GET") return mockApi.getIntegrations() as Promise<T>;
+  if (p === "/api/v1/admin/integrations" && method === "POST") return mockApi.createIntegration({}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/integrations\/[^/]+\/test$/)) return mockApi.testIntegration(seg(p, 5)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/integrations\/[^/]+$/) && method === "PATCH") return mockApi.updateIntegration(seg(p, 5), {}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/integrations\/[^/]+$/) && method === "DELETE") return mockApi.deleteIntegration(seg(p, 5)) as Promise<T>;
+
+  // Admin: Alert Rules
+  if (p === "/api/v1/admin/alert-rules" && method === "GET") return mockApi.getAlertRules() as Promise<T>;
+  if (p === "/api/v1/admin/alert-rules" && method === "POST") return mockApi.createAlertRule({}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/alert-rules\/[^/]+\/toggle$/)) return mockApi.toggleAlertRule(seg(p, 5)) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/alert-rules\/[^/]+$/) && method === "PATCH") return mockApi.updateAlertRule(seg(p, 5), {}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/admin\/alert-rules\/[^/]+$/) && method === "DELETE") return mockApi.deleteAlertRule(seg(p, 5)) as Promise<T>;
+
+  // Onboarding
+  if (p === "/api/v1/onboarding/signup") return mockApi.signup({}) as Promise<T>;
+  if (p.match(/^\/api\/v1\/onboarding\/status\//)) return mockApi.getOnboardingStatus(seg(p, 5)) as Promise<T>;
+
+  console.warn(`[DEMO MODE] No mock handler for ${method} ${p}`);
+  return {} as T;
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  if (DEMO_MODE) {
+    return getDemoResponse<T>(path, options);
+  }
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -81,6 +176,7 @@ export async function apiDelete<T = unknown>(
 // ── Auth ────────────────────────────────────────────────
 
 export function login(email: string, password: string): Promise<AuthResponse> {
+  if (DEMO_MODE) return mockApi.login(email, password) as unknown as Promise<AuthResponse>;
   return apiPost<AuthResponse>("/api/v1/auth/login", { email, password });
 }
 
