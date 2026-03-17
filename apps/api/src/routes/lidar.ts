@@ -503,4 +503,50 @@ export default async function lidarRoutes(fastify: FastifyInstance): Promise<voi
       return reply.code(200).send({ minutes, bucket_size_minutes: 5, snapshots: [] });
     }
   });
+
+  // ==========================================================================
+  // GET /api/v1/lidar/tracks/paths - aggregated movement paths per track
+  // ==========================================================================
+  fastify.get('/api/v1/lidar/tracks/paths', {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const airportId = request.operator!.airport_id;
+    const query = request.query as { zone_id?: string; minutes?: string; limit?: string };
+    const minutes = Math.min(parseInt(query.minutes || '10', 10), 60);
+    const limit = Math.min(parseInt(query.limit || '50', 10), 200);
+    const since = new Date(Date.now() - minutes * 60 * 1000);
+
+    try {
+      const rows = await sql`
+        SELECT
+          tr.track_id,
+          tr.classification,
+          MAX(tr.behavior_score) AS max_behavior_score,
+          MAX(tr.velocity_ms) AS max_velocity,
+          json_agg(
+            json_build_object(
+              'x', (tr.centroid->>'x')::numeric,
+              'y', (tr.centroid->>'y')::numeric,
+              'z', (tr.centroid->>'z')::numeric,
+              't', EXTRACT(EPOCH FROM tr.time)::bigint
+            ) ORDER BY tr.time ASC
+          ) AS points
+        FROM track_objects tr
+        JOIN zones z ON z.id = tr.zone_id
+        JOIN terminals t ON t.id = z.terminal_id
+        WHERE t.airport_id = ${airportId}
+          AND tr.time >= ${since}
+          ${query.zone_id ? sql`AND tr.zone_id = ${query.zone_id}` : sql``}
+        GROUP BY tr.track_id, tr.classification
+        HAVING COUNT(*) >= 2
+        ORDER BY MAX(tr.time) DESC
+        LIMIT ${limit}
+      `;
+
+      return reply.code(200).send({ tracks: rows, minutes, count: rows.length });
+    } catch (err) {
+      request.log.error(err, 'Error fetching track paths');
+      return reply.code(200).send({ tracks: [], minutes, count: 0 });
+    }
+  });
 }

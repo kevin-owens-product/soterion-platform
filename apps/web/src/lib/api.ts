@@ -878,3 +878,19 @@ export function deleteAlertRule(id: string): Promise<{ message: string }> {
 export function toggleAlertRule(id: string): Promise<AlertRule> {
   return apiPost<AlertRule>(`/api/v1/admin/alert-rules/${id}/toggle`, {});
 }
+
+// ── Track Paths ─────────────────────────────────────────
+
+export interface TrackPath {
+  trackId: string;
+  classification: string;
+  maxBehaviorScore: number;
+  maxVelocity: number;
+  points: Array<{ x: number; y: number; z: number; t: number }>;
+}
+
+export async function getTrackPaths(zoneId?: string, minutes = 10): Promise<{ tracks: TrackPath[] }> {
+  const params = new URLSearchParams({ minutes: String(minutes) });
+  if (zoneId) params.set('zone_id', zoneId);
+  return apiFetch(`/api/v1/lidar/tracks/paths?${params}`);
+}
