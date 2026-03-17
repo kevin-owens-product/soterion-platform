@@ -11,33 +11,6 @@ interface FlowAnomaly {
   confidence: number;
 }
 
-const DEV_MOCK_ANOMALIES: FlowAnomaly[] = [
-  {
-    type: 'WRONG_WAY_FLOW',
-    zones: ['Arrivals Curb', 'Security Checkpoint A'],
-    severity: 'HIGH',
-    description: 'Unusual reverse flow detected: 23 tracks moving from arrivals to security at 14:30',
-    detectedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
-    confidence: 0.87,
-  },
-  {
-    type: 'UNUSUAL_DWELL',
-    zones: ['Baggage Claim Hall'],
-    severity: 'MEDIUM',
-    description: 'Baggage Claim density elevated >15min above normal (78% vs 45% avg)',
-    detectedAt: new Date(Date.now() - 8 * 60_000).toISOString(),
-    confidence: 0.92,
-  },
-  {
-    type: 'PERIMETER_PROBE',
-    zones: ['Restricted Airside'],
-    severity: 'CRITICAL',
-    description: '3 brief entries (<30s) to restricted zone in past hour from different tracks',
-    detectedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
-    confidence: 0.94,
-  },
-];
-
 export default async function intelligenceRoutes(fastify: FastifyInstance): Promise<void> {
   // ==========================================================================
   // GET /api/v1/intelligence/flow-anomalies
@@ -51,15 +24,7 @@ export default async function intelligenceRoutes(fastify: FastifyInstance): Prom
   }, async (request, reply) => {
     const facilityId = request.operator!.airport_id;
 
-    // In dev mode, return realistic mock data
-    if (process.env.NODE_ENV === 'development') {
-      return reply.code(200).send({
-        anomalies: DEV_MOCK_ANOMALIES,
-        generated_at: new Date().toISOString(),
-      });
-    }
-
-    // Production: analyze zone_density trends for cross-zone anomalies
+    // Analyze zone_density trends for cross-zone anomalies
     const anomalies: FlowAnomaly[] = [];
 
     // Fetch all zones for the facility
