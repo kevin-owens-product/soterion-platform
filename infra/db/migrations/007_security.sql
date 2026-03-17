@@ -22,7 +22,12 @@ CREATE TABLE audit_log (
     request_id          UUID
 );
 
-SELECT create_hypertable('audit_log', 'event_time');
+DO $$
+BEGIN
+  PERFORM create_hypertable('audit_log', 'event_time');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'create_hypertable(audit_log) skipped — TimescaleDB not available';
+END $$;
 
 -- Prevent updates and deletes on audit_log to enforce immutability
 CREATE RULE audit_no_update AS ON UPDATE TO audit_log DO INSTEAD NOTHING;

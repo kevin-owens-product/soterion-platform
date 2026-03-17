@@ -10,7 +10,7 @@ import sensible from '@fastify/sensible';
 import websocket from '@fastify/websocket';
 
 // Database + Redis
-import { healthCheck as dbHealthCheck, disconnect } from './db/client.js';
+import sql, { healthCheck as dbHealthCheck, disconnect } from './db/client.js';
 import { redis, disconnectRedis } from './lib/redis.js';
 
 // Middleware (registered in order: requestId → securityHeaders → rateLimit → auth → tenantScope → audit)
@@ -235,7 +235,22 @@ async function start() {
       fastify.log.info('Database schema up to date');
     }
   } catch (err) {
-    fastify.log.warn({ err }, 'Auto-migration failed (non-fatal - tables may already exist)');
+    fastify.log.error({ err }, 'Auto-migration failed');
+  }
+
+  // --- Auto-seed if database is empty ---
+  try {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const rows = await sql`SELECT COUNT(*)::int AS cnt FROM airports`;
+    if (rows[0].cnt === 0) {
+      const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
+      const seedSql = readFileSync(seedPath, 'utf-8');
+      await sql.unsafe(seedSql);
+      fastify.log.info('Seed data applied (database was empty)');
+    }
+  } catch (err) {
+    fastify.log.warn({ err }, 'Auto-seed skipped (non-fatal)');
   }
 
   // --- Start BullMQ workers ---

@@ -1,5 +1,6 @@
 -- 003_time_series.sql
--- TimescaleDB hypertables for high-frequency sensor and analytics data
+-- Time-series tables for high-frequency sensor and analytics data.
+-- Uses TimescaleDB hypertables when available, falls back to regular tables.
 
 -- Real-time object tracks from LiDAR sensors
 CREATE TABLE track_objects (
@@ -14,7 +15,12 @@ CREATE TABLE track_objects (
     dwell_secs      NUMERIC
 );
 
-SELECT create_hypertable('track_objects', 'time');
+DO $$
+BEGIN
+  PERFORM create_hypertable('track_objects', 'time');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'create_hypertable(track_objects) skipped — TimescaleDB not available';
+END $$;
 
 CREATE INDEX idx_track_objects_zone_time
     ON track_objects (zone_id, time DESC);
@@ -28,7 +34,12 @@ CREATE TABLE zone_density (
     avg_dwell_secs  NUMERIC
 );
 
-SELECT create_hypertable('zone_density', 'time');
+DO $$
+BEGIN
+  PERFORM create_hypertable('zone_density', 'time');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'create_hypertable(zone_density) skipped — TimescaleDB not available';
+END $$;
 
 -- Queue performance metrics
 CREATE TABLE queue_metrics (
@@ -40,4 +51,9 @@ CREATE TABLE queue_metrics (
     sla_met             BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-SELECT create_hypertable('queue_metrics', 'time');
+DO $$
+BEGIN
+  PERFORM create_hypertable('queue_metrics', 'time');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'create_hypertable(queue_metrics) skipped — TimescaleDB not available';
+END $$;
