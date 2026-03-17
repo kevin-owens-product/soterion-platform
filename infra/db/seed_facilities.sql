@@ -44,20 +44,20 @@ ON CONFLICT (short_code) DO NOTHING;
 INSERT INTO terminals (id, airport_id, name) VALUES
 ('b0000000-0000-4000-8000-000000000010', 'a0000000-0000-4000-8000-000000000002', 'Terminal A'),
 ('b0000000-0000-4000-8000-000000000011', 'a0000000-0000-4000-8000-000000000002', 'Terminal D'),
-('b0000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000002', 'Terminal E');
+('b0000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000002', 'Terminal E')ON CONFLICT (id) DO NOTHING;
 
 -- IAH: Terminals A, B, C, E
 INSERT INTO terminals (id, airport_id, name) VALUES
 ('b0000000-0000-4000-8000-000000000020', 'a0000000-0000-4000-8000-000000000003', 'Terminal A'),
 ('b0000000-0000-4000-8000-000000000021', 'a0000000-0000-4000-8000-000000000003', 'Terminal B'),
 ('b0000000-0000-4000-8000-000000000022', 'a0000000-0000-4000-8000-000000000003', 'Terminal C'),
-('b0000000-0000-4000-8000-000000000023', 'a0000000-0000-4000-8000-000000000003', 'Terminal E');
+('b0000000-0000-4000-8000-000000000023', 'a0000000-0000-4000-8000-000000000003', 'Terminal E')ON CONFLICT (id) DO NOTHING;
 
 -- TPA: Main Terminal + Airsides C, E, F
 INSERT INTO terminals (id, airport_id, name) VALUES
 ('b0000000-0000-4000-8000-000000000030', 'a0000000-0000-4000-8000-000000000004', 'Main Terminal'),
 ('b0000000-0000-4000-8000-000000000031', 'a0000000-0000-4000-8000-000000000004', 'Airside C'),
-('b0000000-0000-4000-8000-000000000032', 'a0000000-0000-4000-8000-000000000004', 'Airside F');
+('b0000000-0000-4000-8000-000000000032', 'a0000000-0000-4000-8000-000000000004', 'Airside F')ON CONFLICT (id) DO NOTHING;
 
 ------------------------------------------------------------
 -- 4. Zones
@@ -73,7 +73,7 @@ INSERT INTO zones (id, terminal_id, name, type, sla_wait_mins, boundary) VALUES
 ('c0000000-0000-4000-8000-000000000013', 'b0000000-0000-4000-8000-000000000011', 'Baggage Claim D', 'baggage', 18,
  '{"type":"Polygon","coordinates":[[[-97.0340,32.8975],[-97.0340,32.8980],[-97.0330,32.8980],[-97.0330,32.8975],[-97.0340,32.8975]]]}'::jsonb),
 ('c0000000-0000-4000-8000-000000000014', 'b0000000-0000-4000-8000-000000000012', 'Terminal E Curbside', 'curb', 10,
- '{"type":"Polygon","coordinates":[[[-97.0320,32.8970],[-97.0320,32.8975],[-97.0310,32.8975],[-97.0310,32.8970],[-97.0320,32.8970]]]}'::jsonb);
+ '{"type":"Polygon","coordinates":[[[-97.0320,32.8970],[-97.0320,32.8975],[-97.0310,32.8975],[-97.0310,32.8970],[-97.0320,32.8970]]]}'::jsonb)ON CONFLICT (id) DO NOTHING;
 
 -- IAH Zones
 INSERT INTO zones (id, terminal_id, name, type, sla_wait_mins, boundary) VALUES
@@ -86,7 +86,7 @@ INSERT INTO zones (id, terminal_id, name, type, sla_wait_mins, boundary) VALUES
 ('c0000000-0000-4000-8000-000000000023', 'b0000000-0000-4000-8000-000000000023', 'Terminal E Connector', 'lounge', 20,
  '{"type":"Polygon","coordinates":[[[-95.3385,29.9900],[-95.3385,29.9905],[-95.3375,29.9905],[-95.3375,29.9900],[-95.3385,29.9900]]]}'::jsonb),
 ('c0000000-0000-4000-8000-000000000024', 'b0000000-0000-4000-8000-000000000020', 'Ground Transport Center', 'curb', 10,
- '{"type":"Polygon","coordinates":[[[-95.3375,29.9900],[-95.3375,29.9905],[-95.3365,29.9905],[-95.3365,29.9900],[-95.3375,29.9900]]]}'::jsonb);
+ '{"type":"Polygon","coordinates":[[[-95.3375,29.9900],[-95.3375,29.9905],[-95.3365,29.9905],[-95.3365,29.9900],[-95.3375,29.9900]]]}'::jsonb)ON CONFLICT (id) DO NOTHING;
 
 -- TPA Zones
 INSERT INTO zones (id, terminal_id, name, type, sla_wait_mins, boundary) VALUES
@@ -99,7 +99,7 @@ INSERT INTO zones (id, terminal_id, name, type, sla_wait_mins, boundary) VALUES
 ('c0000000-0000-4000-8000-000000000033', 'b0000000-0000-4000-8000-000000000030', 'Baggage Level 1', 'baggage', 18,
  '{"type":"Polygon","coordinates":[[[-82.5305,27.9750],[-82.5305,27.9755],[-82.5295,27.9755],[-82.5295,27.9750],[-82.5305,27.9750]]]}'::jsonb),
 ('c0000000-0000-4000-8000-000000000034', 'b0000000-0000-4000-8000-000000000030', 'Blue Express Curbside', 'curb', 8,
- '{"type":"Polygon","coordinates":[[[-82.5295,27.9750],[-82.5295,27.9755],[-82.5285,27.9755],[-82.5285,27.9750],[-82.5295,27.9750]]]}'::jsonb);
+ '{"type":"Polygon","coordinates":[[[-82.5295,27.9750],[-82.5295,27.9755],[-82.5285,27.9755],[-82.5285,27.9750],[-82.5295,27.9750]]]}'::jsonb)ON CONFLICT (id) DO NOTHING;
 
 ------------------------------------------------------------
 -- 5. Sensor Nodes
@@ -113,7 +113,7 @@ INSERT INTO sensor_nodes (id, zone_id, label, model, coords, fov_degrees, range_
 ('d0000000-0000-4000-8000-000000000024', 'c0000000-0000-4000-8000-000000000013', 'DFW-005', 'Hesai JT128', '{"x":-97.0335,"y":32.8977,"z":3.0}'::jsonb, 360, 50, 'ONLINE', NOW() - INTERVAL '8 seconds'),
 ('d0000000-0000-4000-8000-000000000025', 'c0000000-0000-4000-8000-000000000013', 'DFW-006', 'Hesai JT128', '{"x":-97.0337,"y":32.8978,"z":3.0}'::jsonb, 360, 50, 'ONLINE', NOW() - INTERVAL '12 seconds'),
 ('d0000000-0000-4000-8000-000000000026', 'c0000000-0000-4000-8000-000000000014', 'DFW-007', 'Velodyne VLP-32', '{"x":-97.0315,"y":32.8972,"z":6.0}'::jsonb, 360, 80, 'ONLINE', NOW() - INTERVAL '5 seconds'),
-('d0000000-0000-4000-8000-000000000027', 'c0000000-0000-4000-8000-000000000014', 'DFW-008', 'Velodyne VLP-32', '{"x":-97.0313,"y":32.8973,"z":6.0}'::jsonb, 360, 80, 'OFFLINE', NOW() - INTERVAL '45 minutes');
+('d0000000-0000-4000-8000-000000000027', 'c0000000-0000-4000-8000-000000000014', 'DFW-008', 'Velodyne VLP-32', '{"x":-97.0313,"y":32.8973,"z":6.0}'::jsonb, 360, 80, 'OFFLINE', NOW() - INTERVAL '45 minutes')ON CONFLICT (id) DO NOTHING;
 
 -- IAH Sensors (8 sensors)
 INSERT INTO sensor_nodes (id, zone_id, label, model, coords, fov_degrees, range_meters, health, last_ping_at) VALUES
@@ -124,7 +124,7 @@ INSERT INTO sensor_nodes (id, zone_id, label, model, coords, fov_degrees, range_
 ('d0000000-0000-4000-8000-000000000034', 'c0000000-0000-4000-8000-000000000022', 'IAH-005', 'Hesai JT128', '{"x":-95.3390,"y":29.9907,"z":3.0}'::jsonb, 360, 50, 'ONLINE', NOW() - INTERVAL '25 seconds'),
 ('d0000000-0000-4000-8000-000000000035', 'c0000000-0000-4000-8000-000000000022', 'IAH-006', 'Hesai JT128', '{"x":-95.3388,"y":29.9908,"z":3.0}'::jsonb, 360, 50, 'DEGRADED', NOW() - INTERVAL '5 minutes'),
 ('d0000000-0000-4000-8000-000000000036', 'c0000000-0000-4000-8000-000000000023', 'IAH-007', 'Velodyne VLP-32', '{"x":-95.3380,"y":29.9902,"z":4.5}'::jsonb, 360, 70, 'ONLINE', NOW() - INTERVAL '10 seconds'),
-('d0000000-0000-4000-8000-000000000037', 'c0000000-0000-4000-8000-000000000024', 'IAH-008', 'Velodyne VLP-32', '{"x":-95.3370,"y":29.9902,"z":6.0}'::jsonb, 360, 80, 'ONLINE', NOW() - INTERVAL '4 seconds');
+('d0000000-0000-4000-8000-000000000037', 'c0000000-0000-4000-8000-000000000024', 'IAH-008', 'Velodyne VLP-32', '{"x":-95.3370,"y":29.9902,"z":6.0}'::jsonb, 360, 80, 'ONLINE', NOW() - INTERVAL '4 seconds')ON CONFLICT (id) DO NOTHING;
 
 -- TPA Sensors (8 sensors)
 INSERT INTO sensor_nodes (id, zone_id, label, model, coords, fov_degrees, range_meters, health, last_ping_at) VALUES
@@ -135,7 +135,7 @@ INSERT INTO sensor_nodes (id, zone_id, label, model, coords, fov_degrees, range_
 ('d0000000-0000-4000-8000-000000000044', 'c0000000-0000-4000-8000-000000000032', 'TPA-005', 'Hesai JT128', '{"x":-82.5310,"y":27.9757,"z":3.5}'::jsonb, 360, 50, 'DEGRADED', NOW() - INTERVAL '8 minutes'),
 ('d0000000-0000-4000-8000-000000000045', 'c0000000-0000-4000-8000-000000000032', 'TPA-006', 'Hesai JT128', '{"x":-82.5308,"y":27.9758,"z":3.5}'::jsonb, 360, 50, 'ONLINE', NOW() - INTERVAL '20 seconds'),
 ('d0000000-0000-4000-8000-000000000046', 'c0000000-0000-4000-8000-000000000033', 'TPA-007', 'Velodyne VLP-32', '{"x":-82.5300,"y":27.9752,"z":3.0}'::jsonb, 360, 60, 'ONLINE', NOW() - INTERVAL '12 seconds'),
-('d0000000-0000-4000-8000-000000000047', 'c0000000-0000-4000-8000-000000000034', 'TPA-008', 'Velodyne VLP-32', '{"x":-82.5290,"y":27.9752,"z":6.0}'::jsonb, 360, 80, 'ONLINE', NOW() - INTERVAL '3 seconds');
+('d0000000-0000-4000-8000-000000000047', 'c0000000-0000-4000-8000-000000000034', 'TPA-008', 'Velodyne VLP-32', '{"x":-82.5290,"y":27.9752,"z":6.0}'::jsonb, 360, 80, 'ONLINE', NOW() - INTERVAL '3 seconds')ON CONFLICT (id) DO NOTHING;
 
 ------------------------------------------------------------
 -- 6. Operators (password: soterion123)
@@ -145,21 +145,36 @@ INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) V
 ('e0000000-0000-4000-8000-000000000010', 'a0000000-0000-4000-8000-000000000002', 'Marcus J.', 'marcus.j@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Alpha'),
 ('e0000000-0000-4000-8000-000000000011', 'a0000000-0000-4000-8000-000000000002', 'Rachel T.', 'rachel.t@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Bravo'),
 ('e0000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000002', 'David K.', 'david.k@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Alpha'),
-('e0000000-0000-4000-8000-000000000013', 'a0000000-0000-4000-8000-000000000002', 'DFW Admin', 'dfw-admin@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'admin', NULL);
+('e0000000-0000-4000-8000-000000000013', 'a0000000-0000-4000-8000-000000000002', 'DFW Admin', 'dfw-admin@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'admin', NULL)ON CONFLICT (id) DO NOTHING;
 
 -- IAH Operators
 INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) VALUES
 ('e0000000-0000-4000-8000-000000000020', 'a0000000-0000-4000-8000-000000000003', 'Sofia R.', 'sofia.r@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Terminal A'),
 ('e0000000-0000-4000-8000-000000000021', 'a0000000-0000-4000-8000-000000000003', 'Carlos M.', 'carlos.m@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Terminal B'),
 ('e0000000-0000-4000-8000-000000000022', 'a0000000-0000-4000-8000-000000000003', 'Linda W.', 'linda.w@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Control'),
-('e0000000-0000-4000-8000-000000000023', 'a0000000-0000-4000-8000-000000000003', 'IAH Admin', 'iah-admin@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'admin', NULL);
+('e0000000-0000-4000-8000-000000000023', 'a0000000-0000-4000-8000-000000000003', 'IAH Admin', 'iah-admin@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'admin', NULL)ON CONFLICT (id) DO NOTHING;
 
 -- TPA Operators
 INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) VALUES
 ('e0000000-0000-4000-8000-000000000030', 'a0000000-0000-4000-8000-000000000004', 'Jake P.', 'jake.p@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Main'),
 ('e0000000-0000-4000-8000-000000000031', 'a0000000-0000-4000-8000-000000000004', 'Maria G.', 'maria.g@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Airside'),
 ('e0000000-0000-4000-8000-000000000032', 'a0000000-0000-4000-8000-000000000004', 'Nick S.', 'nick.s@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Control'),
-('e0000000-0000-4000-8000-000000000033', 'a0000000-0000-4000-8000-000000000004', 'TPA Admin', 'tpa-admin@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'admin', NULL);
+('e0000000-0000-4000-8000-000000000033', 'a0000000-0000-4000-8000-000000000004', 'TPA Admin', 'tpa-admin@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'admin', NULL)ON CONFLICT (id) DO NOTHING;
+
+------------------------------------------------------------
+-- 6b. Clean generated data for re-runs (idempotent)
+------------------------------------------------------------
+DELETE FROM mission_progress WHERE operator_id IN (SELECT id FROM operators WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004'));
+DELETE FROM operator_badges WHERE operator_id IN (SELECT id FROM operators WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004'));
+DELETE FROM operator_roles WHERE operator_id IN (SELECT id FROM operators WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004'));
+DELETE FROM shift_scores WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004');
+DELETE FROM anomaly_events WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004');
+DELETE FROM missions WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004');
+DELETE FROM retention_policies WHERE facility_id IN ('f0000000-0000-4000-8000-000000000002','f0000000-0000-4000-8000-000000000003','f0000000-0000-4000-8000-000000000004');
+DELETE FROM security_incidents WHERE facility_id IN ('f0000000-0000-4000-8000-000000000002','f0000000-0000-4000-8000-000000000003','f0000000-0000-4000-8000-000000000004');
+DELETE FROM track_objects WHERE sensor_id IN (SELECT id FROM sensor_nodes WHERE zone_id IN (SELECT id FROM zones WHERE terminal_id IN (SELECT id FROM terminals WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004'))));
+DELETE FROM queue_metrics WHERE zone_id IN (SELECT id FROM zones WHERE terminal_id IN (SELECT id FROM terminals WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004')));
+DELETE FROM zone_density WHERE zone_id IN (SELECT id FROM zones WHERE terminal_id IN (SELECT id FROM terminals WHERE airport_id IN ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004')));
 
 ------------------------------------------------------------
 -- 7. Anomaly Events
@@ -450,7 +465,7 @@ INSERT INTO missions (id, airport_id, title, description, metric_key, target_val
  'fast_ack_count', 15, 'bonus_points', 600, NOW() + INTERVAL '7 days', TRUE),
 ('aa000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000002',
  'Terminal Sweep', 'Complete a full sensor health check across all DFW terminals',
- 'sensor_check_count', 8, 'badge', 1, NOW() + INTERVAL '1 day', TRUE);
+ 'sensor_check_count', 8, 'badge', 1, NOW() + INTERVAL '1 day', TRUE)ON CONFLICT (id) DO NOTHING;
 
 -- IAH Missions
 INSERT INTO missions (id, airport_id, title, description, metric_key, target_value, reward_type, reward_value, resets_at, active) VALUES
@@ -462,7 +477,7 @@ INSERT INTO missions (id, airport_id, title, description, metric_key, target_val
  'consecutive_high_score', 3, 'bonus_points', 800, NOW() + INTERVAL '7 days', TRUE),
 ('aa000000-0000-4000-8000-000000000022', 'a0000000-0000-4000-8000-000000000003',
  'Zero Blind Spots', 'Restore all degraded sensors within 15 minutes of alert',
- 'sensor_restore_count', 4, 'badge', 1, NOW() + INTERVAL '1 day', TRUE);
+ 'sensor_restore_count', 4, 'badge', 1, NOW() + INTERVAL '1 day', TRUE)ON CONFLICT (id) DO NOTHING;
 
 -- TPA Missions
 INSERT INTO missions (id, airport_id, title, description, metric_key, target_value, reward_type, reward_value, resets_at, active) VALUES
@@ -474,7 +489,7 @@ INSERT INTO missions (id, airport_id, title, description, metric_key, target_val
  'queue_wait_time', 8, 'bonus_points', 350, NOW() + INTERVAL '8 hours', TRUE),
 ('aa000000-0000-4000-8000-000000000032', 'a0000000-0000-4000-8000-000000000004',
  'Airside Sentinel', 'Acknowledge every alert in Airside F within 60 seconds',
- 'fast_ack_count', 10, 'badge', 1, NOW() + INTERVAL '1 day', TRUE);
+ 'fast_ack_count', 10, 'badge', 1, NOW() + INTERVAL '1 day', TRUE)ON CONFLICT (id) DO NOTHING;
 
 ------------------------------------------------------------
 -- 17. Mission Progress

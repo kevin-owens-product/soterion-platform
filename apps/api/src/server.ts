@@ -253,20 +253,13 @@ async function start() {
       fastify.log.info('Core seed data applied');
     }
 
-    // Seed additional facilities if missing
+    // Seed additional facilities (idempotent — cleans and re-inserts generated data)
     const facilityFile = join(seedDir, 'seed_facilities.sql');
     if (existsSync(facilityFile)) {
-      const dfwRows = await sql`SELECT COUNT(*)::int AS cnt FROM airports WHERE iata_code = 'DFW'`;
-      if (dfwRows[0].cnt === 0) {
+      const dfwMissions = await sql`SELECT COUNT(*)::int AS cnt FROM missions WHERE airport_id = 'a0000000-0000-4000-8000-000000000002'`;
+      if (dfwMissions[0].cnt === 0) {
         await sql.unsafe(readFileSync(facilityFile, 'utf-8'));
         fastify.log.info('Facilities seed applied (DFW, IAH, TPA)');
-      } else {
-        // Facilities exist — check if missions were added (covers updated seed file)
-        const missionRows = await sql`SELECT COUNT(*)::int AS cnt FROM missions WHERE airport_id = 'a0000000-0000-4000-8000-000000000002'`;
-        if (missionRows[0].cnt === 0) {
-          await sql.unsafe(readFileSync(facilityFile, 'utf-8'));
-          fastify.log.info('Facilities seed updated (added missions, roles, audit log)');
-        }
       }
     }
   } catch (err) {
