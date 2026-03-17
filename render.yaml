@@ -32,6 +32,8 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://soterion-api.onrender.com
+      - key: VITE_DEMO_MODE
+        value: "false"
     routes:
       - type: rewrite
         source: /*
