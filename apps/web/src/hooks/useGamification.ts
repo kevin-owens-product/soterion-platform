@@ -263,8 +263,10 @@ export function useGamificationEvents(facilityId?: string) {
     // Skip WebSocket in dev mode
     if (import.meta.env.DEV) return;
 
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const base = `${proto}//${window.location.host}`;
+    const apiUrl = import.meta.env.VITE_API_URL || "";
+    const base = apiUrl
+      ? apiUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:")
+      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
 
     const client = new WSClient({
       url: `${base}/ws/gamification/${facilityId}`,

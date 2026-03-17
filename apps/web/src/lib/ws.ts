@@ -121,6 +121,11 @@ import { camelizeKeys } from "@/lib/camelize";
 import { DEMO_MODE } from "@/lib/api";
 
 function getWsBase(): string {
+  const apiUrl = import.meta.env.VITE_API_URL || "";
+  if (apiUrl) {
+    // Convert https://host to wss://host, http://host to ws://host
+    return apiUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+  }
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${window.location.host}`;
 }
