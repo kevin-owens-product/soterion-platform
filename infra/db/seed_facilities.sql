@@ -436,3 +436,112 @@ INSERT INTO compliance_frameworks (id, facility_type, framework_key, label, rule
 (uuid_generate_v4(), 'AIRPORT', 'TSA_49CFR1542', 'TSA 49 CFR 1542 Airport Security',
  '[{"rule":"1542.201","description":"Airport security program required"},{"rule":"1542.205","description":"Security of the AOA"},{"rule":"1542.207","description":"Access control systems"},{"rule":"1542.209","description":"Fingerprint-based criminal history records checks"}]'::jsonb)
 ON CONFLICT (facility_type, framework_key) DO NOTHING;
+
+------------------------------------------------------------
+-- 16. Missions (per facility)
+------------------------------------------------------------
+-- DFW Missions
+INSERT INTO missions (id, airport_id, title, description, metric_key, target_value, reward_type, reward_value, resets_at, active) VALUES
+('aa000000-0000-4000-8000-000000000010', 'a0000000-0000-4000-8000-000000000002',
+ 'Skylink Guardian', 'Keep all Skylink station zones under 70% density for 12 hours',
+ 'density_threshold', 70, 'bonus_points', 400, NOW() + INTERVAL '12 hours', TRUE),
+('aa000000-0000-4000-8000-000000000011', 'a0000000-0000-4000-8000-000000000002',
+ 'Eagle Eye', 'Acknowledge 15 anomaly events within 45 seconds each',
+ 'fast_ack_count', 15, 'bonus_points', 600, NOW() + INTERVAL '7 days', TRUE),
+('aa000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000002',
+ 'Terminal Sweep', 'Complete a full sensor health check across all DFW terminals',
+ 'sensor_check_count', 8, 'badge', 1, NOW() + INTERVAL '1 day', TRUE);
+
+-- IAH Missions
+INSERT INTO missions (id, airport_id, title, description, metric_key, target_value, reward_type, reward_value, resets_at, active) VALUES
+('aa000000-0000-4000-8000-000000000020', 'a0000000-0000-4000-8000-000000000003',
+ 'CBP Surge Shield', 'Maintain International Arrivals queue under 20 min wait for 8 hours',
+ 'queue_wait_time', 20, 'bonus_points', 500, NOW() + INTERVAL '8 hours', TRUE),
+('aa000000-0000-4000-8000-000000000021', 'a0000000-0000-4000-8000-000000000003',
+ 'Houston Heat', 'Achieve a shift score above 850 for 3 consecutive days',
+ 'consecutive_high_score', 3, 'bonus_points', 800, NOW() + INTERVAL '7 days', TRUE),
+('aa000000-0000-4000-8000-000000000022', 'a0000000-0000-4000-8000-000000000003',
+ 'Zero Blind Spots', 'Restore all degraded sensors within 15 minutes of alert',
+ 'sensor_restore_count', 4, 'badge', 1, NOW() + INTERVAL '1 day', TRUE);
+
+-- TPA Missions
+INSERT INTO missions (id, airport_id, title, description, metric_key, target_value, reward_type, reward_value, resets_at, active) VALUES
+('aa000000-0000-4000-8000-000000000030', 'a0000000-0000-4000-8000-000000000004',
+ 'Sunshine Streak', 'Maintain a 5-day scoring streak above 800',
+ 'consecutive_high_score', 5, 'bonus_points', 700, NOW() + INTERVAL '7 days', TRUE),
+('aa000000-0000-4000-8000-000000000031', 'a0000000-0000-4000-8000-000000000004',
+ 'Blue Express', 'Keep curbside pickup zone under SLA for an entire shift',
+ 'queue_wait_time', 8, 'bonus_points', 350, NOW() + INTERVAL '8 hours', TRUE),
+('aa000000-0000-4000-8000-000000000032', 'a0000000-0000-4000-8000-000000000004',
+ 'Airside Sentinel', 'Acknowledge every alert in Airside F within 60 seconds',
+ 'fast_ack_count', 10, 'badge', 1, NOW() + INTERVAL '1 day', TRUE);
+
+------------------------------------------------------------
+-- 17. Mission Progress
+------------------------------------------------------------
+-- DFW
+INSERT INTO mission_progress (operator_id, mission_id, progress, completed, completed_at, updated_at) VALUES
+('e0000000-0000-4000-8000-000000000010', 'aa000000-0000-4000-8000-000000000010', 0.85, FALSE, NULL, NOW() - INTERVAL '20 minutes'),
+('e0000000-0000-4000-8000-000000000010', 'aa000000-0000-4000-8000-000000000011', 12, FALSE, NULL, NOW() - INTERVAL '45 minutes'),
+('e0000000-0000-4000-8000-000000000011', 'aa000000-0000-4000-8000-000000000011', 6, FALSE, NULL, NOW() - INTERVAL '2 hours'),
+('e0000000-0000-4000-8000-000000000012', 'aa000000-0000-4000-8000-000000000012', 8, TRUE, NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour');
+
+-- IAH
+INSERT INTO mission_progress (operator_id, mission_id, progress, completed, completed_at, updated_at) VALUES
+('e0000000-0000-4000-8000-000000000020', 'aa000000-0000-4000-8000-000000000020', 0.92, FALSE, NULL, NOW() - INTERVAL '15 minutes'),
+('e0000000-0000-4000-8000-000000000020', 'aa000000-0000-4000-8000-000000000021', 2, FALSE, NULL, NOW() - INTERVAL '1 hour'),
+('e0000000-0000-4000-8000-000000000021', 'aa000000-0000-4000-8000-000000000022', 1, FALSE, NULL, NOW() - INTERVAL '3 hours'),
+('e0000000-0000-4000-8000-000000000022', 'aa000000-0000-4000-8000-000000000020', 0.78, FALSE, NULL, NOW() - INTERVAL '30 minutes');
+
+-- TPA
+INSERT INTO mission_progress (operator_id, mission_id, progress, completed, completed_at, updated_at) VALUES
+('e0000000-0000-4000-8000-000000000030', 'aa000000-0000-4000-8000-000000000030', 3, FALSE, NULL, NOW() - INTERVAL '1 hour'),
+('e0000000-0000-4000-8000-000000000030', 'aa000000-0000-4000-8000-000000000032', 8, FALSE, NULL, NOW() - INTERVAL '40 minutes'),
+('e0000000-0000-4000-8000-000000000031', 'aa000000-0000-4000-8000-000000000031', 1.0, TRUE, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '2 hours'),
+('e0000000-0000-4000-8000-000000000032', 'aa000000-0000-4000-8000-000000000030', 5, TRUE, NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '30 minutes');
+
+------------------------------------------------------------
+-- 18. RBAC Operator Role Assignments
+------------------------------------------------------------
+-- DFW operator roles (using roles seeded in seed.sql)
+INSERT INTO operator_roles (operator_id, role_id, granted_by, granted_at) VALUES
+('e0000000-0000-4000-8000-000000000010', '10000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000013', NOW() - INTERVAL '45 days'),
+('e0000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000013', NOW() - INTERVAL '40 days'),
+('e0000000-0000-4000-8000-000000000012', '10000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000013', NOW() - INTERVAL '42 days'),
+('e0000000-0000-4000-8000-000000000013', '10000000-0000-4000-8000-000000000003', NULL, NOW() - INTERVAL '60 days');
+
+-- IAH operator roles
+INSERT INTO operator_roles (operator_id, role_id, granted_by, granted_at) VALUES
+('e0000000-0000-4000-8000-000000000020', '10000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000023', NOW() - INTERVAL '50 days'),
+('e0000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000023', NOW() - INTERVAL '35 days'),
+('e0000000-0000-4000-8000-000000000022', '10000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000023', NOW() - INTERVAL '48 days'),
+('e0000000-0000-4000-8000-000000000023', '10000000-0000-4000-8000-000000000003', NULL, NOW() - INTERVAL '60 days');
+
+-- TPA operator roles
+INSERT INTO operator_roles (operator_id, role_id, granted_by, granted_at) VALUES
+('e0000000-0000-4000-8000-000000000030', '10000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000033', NOW() - INTERVAL '30 days'),
+('e0000000-0000-4000-8000-000000000031', '10000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000033', NOW() - INTERVAL '28 days'),
+('e0000000-0000-4000-8000-000000000032', '10000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000033', NOW() - INTERVAL '32 days'),
+('e0000000-0000-4000-8000-000000000033', '10000000-0000-4000-8000-000000000003', NULL, NOW() - INTERVAL '60 days');
+
+------------------------------------------------------------
+-- 19. Audit Log (recent activity per facility)
+------------------------------------------------------------
+INSERT INTO audit_log (event_time, actor_id, actor_email, actor_ip, actor_user_agent, facility_id, action, resource_type, resource_id, before_state, after_state, outcome, session_id, request_id) VALUES
+-- DFW activity
+(NOW() - INTERVAL '6 hours', 'e0000000-0000-4000-8000-000000000013', 'dfw-admin@soterion.io', '10.10.1.1', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000002', 'auth.login', 'operator', 'e0000000-0000-4000-8000-000000000013', NULL, '{"role":"admin"}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '5 hours 30 minutes', 'e0000000-0000-4000-8000-000000000010', 'marcus.j@soterion.io', '10.10.1.10', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000002', 'auth.login', 'operator', 'e0000000-0000-4000-8000-000000000010', NULL, '{"role":"operator"}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '2 hours 20 minutes', 'e0000000-0000-4000-8000-000000000012', 'david.k@soterion.io', '10.10.1.12', 'Mozilla/5.0 Safari/17', 'f0000000-0000-4000-8000-000000000002', 'alert.acknowledge', 'anomaly_event', NULL, '{"acknowledged":false}', '{"acknowledged":true}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '1 hour', 'e0000000-0000-4000-8000-000000000013', 'dfw-admin@soterion.io', '10.10.1.1', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000002', 'sensor.update', 'sensor_node', 'd0000000-0000-4000-8000-000000000023', '{"health":"OFFLINE"}', '{"health":"DEGRADED"}', 'SUCCESS', NULL, uuid_generate_v4()),
+
+-- IAH activity
+(NOW() - INTERVAL '7 hours', 'e0000000-0000-4000-8000-000000000023', 'iah-admin@soterion.io', '10.20.1.1', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000003', 'auth.login', 'operator', 'e0000000-0000-4000-8000-000000000023', NULL, '{"role":"admin"}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '6 hours 45 minutes', 'e0000000-0000-4000-8000-000000000020', 'sofia.r@soterion.io', '10.20.1.20', 'Mozilla/5.0 Firefox/123', 'f0000000-0000-4000-8000-000000000003', 'auth.login', 'operator', 'e0000000-0000-4000-8000-000000000020', NULL, '{"role":"operator"}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '50 minutes', 'e0000000-0000-4000-8000-000000000022', 'linda.w@soterion.io', '10.20.1.22', 'Mozilla/5.0 Safari/17', 'f0000000-0000-4000-8000-000000000003', 'alert.escalate', 'anomaly_event', NULL, '{"escalated":false}', '{"escalated":true}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '30 minutes', NULL, 'unknown@probe.net', '203.0.113.50', 'curl/8.4.0', 'f0000000-0000-4000-8000-000000000003', 'auth.login', 'operator', NULL, NULL, NULL, 'FAILURE', NULL, uuid_generate_v4()),
+
+-- TPA activity
+(NOW() - INTERVAL '5 hours', 'e0000000-0000-4000-8000-000000000033', 'tpa-admin@soterion.io', '10.30.1.1', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000004', 'auth.login', 'operator', 'e0000000-0000-4000-8000-000000000033', NULL, '{"role":"admin"}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '4 hours 50 minutes', 'e0000000-0000-4000-8000-000000000030', 'jake.p@soterion.io', '10.30.1.30', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000004', 'auth.login', 'operator', 'e0000000-0000-4000-8000-000000000030', NULL, '{"role":"operator"}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '1 hour 15 minutes', 'e0000000-0000-4000-8000-000000000032', 'nick.s@soterion.io', '10.30.1.32', 'Mozilla/5.0 Safari/17', 'f0000000-0000-4000-8000-000000000004', 'alert.acknowledge', 'anomaly_event', NULL, '{"acknowledged":false}', '{"acknowledged":true}', 'SUCCESS', NULL, uuid_generate_v4()),
+(NOW() - INTERVAL '45 minutes', 'e0000000-0000-4000-8000-000000000033', 'tpa-admin@soterion.io', '10.30.1.1', 'Mozilla/5.0 Chrome/122', 'f0000000-0000-4000-8000-000000000004', 'retention.update', 'retention_policy', NULL, '{"retention_days":60}', '{"retention_days":90}', 'SUCCESS', NULL, uuid_generate_v4());
