@@ -20,7 +20,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
     const { email, password } = parsed.data;
 
     try {
-      // Look up operator by email
+      // Look up operator by email, joining facilities to get facility_id
       const rows = await sql<{
         id: string;
         email: string;
@@ -28,10 +28,14 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
         password_hash: string;
         role: string;
         airport_id: string;
+        facility_id: string | null;
       }[]>`
-        SELECT id, email, name, password_hash, role, airport_id
-        FROM operators
-        WHERE email = ${email}
+        SELECT o.id, o.email, o.name, o.password_hash, o.role, o.airport_id,
+               f.id AS facility_id
+        FROM operators o
+        LEFT JOIN airports a ON a.id = o.airport_id
+        LEFT JOIN facilities f ON f.short_code = a.iata_code
+        WHERE o.email = ${email}
         LIMIT 1
       `;
 
@@ -61,6 +65,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
           email: operator.email,
           role: operator.role,
           airport_id: operator.airport_id,
+          facility_id: operator.facility_id,
           jti,
         },
         { expiresIn: '1h' },
@@ -70,21 +75,22 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
       const refreshToken = uuidv4();
       const refreshExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-      // Store session
-      await sql`
-        INSERT INTO operator_sessions (operator_id, facility_id, jwt_jti, ip_address, user_agent, expires_at)
-        VALUES (
-          ${operator.id},
-          ${operator.airport_id},
-          ${refreshToken},
-          ${request.ip}::inet,
-          ${request.headers['user-agent'] ?? null},
-          ${refreshExpiresAt}
-        )
-      `.catch((err) => {
-        // operator_sessions may not exist yet (007 migration). Log and continue.
-        request.log.warn({ err }, 'Could not store session (operator_sessions table may not exist)');
-      });
+      // Store session (facility_id from facilities table join, falls back gracefully)
+      if (operator.facility_id) {
+        await sql`
+          INSERT INTO operator_sessions (operator_id, facility_id, jwt_jti, ip_address, user_agent, expires_at)
+          VALUES (
+            ${operator.id},
+            ${operator.facility_id},
+            ${refreshToken},
+            ${request.ip}::inet,
+            ${request.headers['user-agent'] ?? null},
+            ${refreshExpiresAt}
+          )
+        `.catch((err) => {
+          request.log.warn({ err }, 'Could not store session');
+        });
+      }
 
       // Update last login
       await sql`
@@ -165,17 +171,21 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
         });
       }
 
-      // Get operator
+      // Get operator with facility_id
       const operators = await sql<{
         id: string;
         email: string;
         name: string;
         role: string;
         airport_id: string;
+        facility_id: string | null;
       }[]>`
-        SELECT id, email, name, role, airport_id
-        FROM operators
-        WHERE id = ${session.operator_id}
+        SELECT o.id, o.email, o.name, o.role, o.airport_id,
+               f.id AS facility_id
+        FROM operators o
+        LEFT JOIN airports a ON a.id = o.airport_id
+        LEFT JOIN facilities f ON f.short_code = a.iata_code
+        WHERE o.id = ${session.operator_id}
         LIMIT 1
       `;
 
@@ -203,6 +213,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
           email: operator.email,
           role: operator.role,
           airport_id: operator.airport_id,
+          facility_id: operator.facility_id,
           jti: newJti,
         },
         { expiresIn: '1h' },
@@ -212,17 +223,19 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
       const newRefreshToken = uuidv4();
       const refreshExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      await sql`
-        INSERT INTO operator_sessions (operator_id, facility_id, jwt_jti, ip_address, user_agent, expires_at)
-        VALUES (
-          ${operator.id},
-          ${operator.airport_id},
-          ${newRefreshToken},
-          ${request.ip}::inet,
-          ${request.headers['user-agent'] ?? null},
-          ${refreshExpiresAt}
-        )
-      `;
+      if (operator.facility_id) {
+        await sql`
+          INSERT INTO operator_sessions (operator_id, facility_id, jwt_jti, ip_address, user_agent, expires_at)
+          VALUES (
+            ${operator.id},
+            ${operator.facility_id},
+            ${newRefreshToken},
+            ${request.ip}::inet,
+            ${request.headers['user-agent'] ?? null},
+            ${refreshExpiresAt}
+          )
+        `;
+      }
 
       return reply.code(200).send({
         access_token: accessToken,
