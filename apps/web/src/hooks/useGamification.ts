@@ -260,8 +260,8 @@ export function useGamificationEvents(facilityId?: string) {
 
   useEffect(() => {
     if (!facilityId) return;
-    // Skip WebSocket in dev mode
-    if (import.meta.env.DEV) return;
+    // Skip WebSocket — no server-side /ws/gamification route yet
+    return;
 
     const apiUrl = import.meta.env.VITE_API_URL || "";
     const base = apiUrl

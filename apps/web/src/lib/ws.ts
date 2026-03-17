@@ -137,7 +137,7 @@ export function connectAlerts(
   onDisconnected?: () => void,
 ): WSClient {
   const client = new WSClient({
-    url: `${getWsBase()}/ws/alerts/${facilityId}`,
+    url: `${getWsBase()}/ws/alerts`,
     onMessage: (data) => {
       const msg = data as { type?: string; payload?: AnomalyEvent };
       if (msg.type === "alert" && msg.payload) {
