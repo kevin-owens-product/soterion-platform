@@ -29,6 +29,9 @@ services:
     runtime: static
     buildCommand: cd apps/web && npm install && npm run build
     staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://soterion-api.onrender.com
     routes:
       - type: rewrite
         source: /*
