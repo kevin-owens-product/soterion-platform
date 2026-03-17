@@ -124,20 +124,7 @@ async function buildServer() {
 
   // --- Health checks ---
 
-  // POST /admin/seed-facilities - seed additional facility data (DFW, IAH, TPA)
-  fastify.post('/admin/seed-facilities', async (_request, reply) => {
-    try {
-      const { readFileSync } = await import('node:fs');
-      const { join } = await import('node:path');
-      const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed_facilities.sql');
-      const seedSql = readFileSync(seedPath, 'utf-8');
-      await sql.unsafe(seedSql);
-      const cnt = await sql`SELECT COUNT(DISTINCT airport_id)::int AS cnt FROM operators`;
-      return reply.send({ ok: true, facilities: cnt[0].cnt });
-    } catch (e) {
-      return reply.send({ ok: false, error: (e as Error).message });
-    }
-  });
+
 
   // GET /health - basic liveness probe
   fastify.get('/health', async (_request, reply) => {
@@ -253,22 +240,30 @@ async function start() {
     fastify.log.error({ err }, 'Auto-migration failed');
   }
 
-  // --- Auto-seed if database is empty ---
+  // --- Auto-seed on startup ---
   try {
-    const { readFileSync } = await import('node:fs');
+    const { readFileSync, existsSync } = await import('node:fs');
     const { join } = await import('node:path');
+    const seedDir = join(process.cwd(), '..', '..', 'infra', 'db');
+
+    // Seed core data if database is empty
     const airportRows = await sql`SELECT COUNT(*)::int AS cnt FROM airports`;
     if (airportRows[0].cnt === 0) {
-      const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
-      await sql.unsafe(readFileSync(seedPath, 'utf-8'));
-      fastify.log.info('Seed data applied (database was empty)');
-      // Also seed additional facilities
-      const facilitiesSeedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed_facilities.sql');
-      await sql.unsafe(readFileSync(facilitiesSeedPath, 'utf-8'));
-      fastify.log.info('Facilities seed data applied (DFW, IAH, TPA)');
+      await sql.unsafe(readFileSync(join(seedDir, 'seed.sql'), 'utf-8'));
+      fastify.log.info('Core seed data applied');
+    }
+
+    // Seed additional facilities if missing (idempotent — uses ON CONFLICT)
+    const facilityFile = join(seedDir, 'seed_facilities.sql');
+    if (existsSync(facilityFile)) {
+      const facilityRows = await sql`SELECT COUNT(*)::int AS cnt FROM facilities WHERE short_code = 'DFW'`;
+      if (facilityRows[0].cnt === 0) {
+        await sql.unsafe(readFileSync(facilityFile, 'utf-8'));
+        fastify.log.info('Facilities seed applied (DFW, IAH, TPA)');
+      }
     }
   } catch (err) {
-    fastify.log.warn({ err }, 'Auto-seed skipped (non-fatal)');
+    fastify.log.warn({ err }, 'Auto-seed error (non-fatal)');
   }
 
   // --- Start BullMQ workers ---
