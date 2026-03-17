@@ -124,6 +124,58 @@ async function buildServer() {
 
   // --- Health checks ---
 
+  // POST /admin/reseed - force re-seed extended data (temporary debug endpoint)
+  fastify.post('/admin/reseed', async (_request, reply) => {
+    const log: string[] = [];
+    try {
+      const { readFileSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
+      log.push(`Reading seed from: ${seedPath}`);
+      const seedSql = readFileSync(seedPath, 'utf-8');
+      log.push(`Seed file length: ${seedSql.length} chars`);
+
+      const extendedStart = seedSql.indexOf('-- 12. Anomaly Events');
+      log.push(`Extended section starts at char: ${extendedStart}`);
+
+      if (extendedStart === -1) {
+        return reply.send({ ok: false, log, error: 'Extended seed section not found in seed.sql' });
+      }
+
+      // Clean tables
+      const tables = [
+        'mission_progress', 'operator_badges', 'operator_roles',
+        'role_permissions', 'vulnerability_findings', 'security_incidents',
+        'retention_policies', 'track_objects', 'queue_metrics',
+        'zone_density', 'anomaly_events', 'shift_scores',
+        'permissions', 'roles',
+      ];
+      for (const t of tables) {
+        try {
+          const r = await sql.unsafe(`DELETE FROM ${t}`);
+          log.push(`Cleaned ${t}: ${r.count} rows`);
+        } catch (e) {
+          log.push(`Clean ${t} failed: ${(e as Error).message}`);
+        }
+      }
+
+      // Run extended seed
+      const extSql = seedSql.substring(extendedStart);
+      log.push(`Running extended seed: ${extSql.length} chars`);
+      await sql.unsafe(extSql);
+      log.push('Extended seed applied successfully');
+
+      // Verify
+      const cnt = await sql`SELECT COUNT(*)::int AS cnt FROM anomaly_events`;
+      log.push(`anomaly_events count: ${cnt[0].cnt}`);
+
+      return reply.send({ ok: true, log });
+    } catch (e) {
+      log.push(`FATAL: ${(e as Error).message}`);
+      return reply.send({ ok: false, log, error: (e as Error).message, stack: (e as Error).stack?.slice(0, 500) });
+    }
+  });
+
   // GET /health - basic liveness probe
   fastify.get('/health', async (_request, reply) => {
     return reply.code(200).send({
