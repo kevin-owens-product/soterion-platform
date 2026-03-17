@@ -894,3 +894,19 @@ export async function getTrackPaths(zoneId?: string, minutes = 10): Promise<{ tr
   if (zoneId) params.set('zone_id', zoneId);
   return apiFetch(`/api/v1/lidar/tracks/paths?${params}`);
 }
+
+// ── Incident Track Replay ──────────────────────────────
+
+export interface IncidentFrame {
+  trackId: string;
+  classification: string;
+  behaviorScore: number;
+  velocityMs: number;
+  centroid: { x: number; y: number; z: number };
+  dwellSecs: number;
+  time: string;
+}
+
+export async function getIncidentTracks(alertId: string): Promise<{ frames: IncidentFrame[]; trackCount: number }> {
+  return apiFetch(`/api/v1/alerts/${alertId}/tracks`);
+}

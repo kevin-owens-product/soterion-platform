@@ -339,6 +339,58 @@ export default async function alertRoutes(fastify: FastifyInstance): Promise<voi
       });
     }
   });
+
+  // GET /api/v1/alerts/:id/tracks - track positions for incident replay
+  fastify.get('/api/v1/alerts/:id/tracks', {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const airportId = request.operator!.airport_id;
+
+    try {
+      const alerts = await sql`
+        SELECT id, track_ids, zone_id, created_at
+        FROM anomaly_events
+        WHERE id = ${id} AND airport_id = ${airportId}
+        LIMIT 1
+      `;
+
+      if (alerts.length === 0) {
+        return reply.code(404).send({ error: 'Not Found', message: 'Alert not found' });
+      }
+
+      const alert = alerts[0];
+      const windowStart = new Date(new Date(alert.created_at).getTime() - 60_000);
+      const windowEnd = new Date(new Date(alert.created_at).getTime() + 60_000);
+
+      const tracks = await sql`
+        SELECT
+          track_id,
+          classification,
+          behavior_score,
+          velocity_ms,
+          centroid,
+          dwell_secs,
+          time
+        FROM track_objects
+        WHERE zone_id = ${alert.zone_id}
+          AND time >= ${windowStart}
+          AND time <= ${windowEnd}
+        ORDER BY track_id, time ASC
+      `;
+
+      return reply.code(200).send({
+        alert_id: id,
+        zone_id: alert.zone_id,
+        window: { start: windowStart.toISOString(), end: windowEnd.toISOString() },
+        track_count: new Set(tracks.map((t: any) => t.track_id)).size,
+        frames: tracks,
+      });
+    } catch (err) {
+      request.log.error(err, 'Error fetching incident tracks');
+      return reply.code(200).send({ alert_id: id, frames: [], track_count: 0 });
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
