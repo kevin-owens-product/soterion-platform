@@ -464,4 +464,43 @@ export default async function lidarRoutes(fastify: FastifyInstance): Promise<voi
       trend,
     });
   });
+
+  // GET /api/v1/lidar/density-history - time-series density for heatmap animation
+  fastify.get('/api/v1/lidar/density-history', {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const airportId = request.operator!.airport_id;
+    const query = request.query as { minutes?: string };
+    const minutes = Math.min(parseInt(query.minutes || '120', 10), 480);
+    const since = new Date(Date.now() - minutes * 60 * 1000);
+
+    try {
+      const rows = await sql`
+        SELECT
+          date_trunc('minute', zd.time) -
+            ((EXTRACT(MINUTE FROM zd.time)::int % 5) || ' minutes')::interval AS bucket,
+          z.id AS zone_id,
+          z.name AS zone_name,
+          ROUND(AVG(zd.count))::int AS avg_count,
+          ROUND(AVG(zd.density_pct)::numeric, 1) AS avg_density_pct,
+          ROUND(AVG(zd.avg_dwell_secs)::numeric, 0) AS avg_dwell_secs
+        FROM zone_density zd
+        JOIN zones z ON z.id = zd.zone_id
+        JOIN terminals t ON t.id = z.terminal_id
+        WHERE t.airport_id = ${airportId}
+          AND zd.time >= ${since}
+        GROUP BY bucket, z.id, z.name
+        ORDER BY bucket ASC, z.name ASC
+      `;
+
+      return reply.code(200).send({
+        minutes,
+        bucket_size_minutes: 5,
+        snapshots: rows,
+      });
+    } catch (err) {
+      request.log.error(err, 'Error fetching density history');
+      return reply.code(200).send({ minutes, bucket_size_minutes: 5, snapshots: [] });
+    }
+  });
 }

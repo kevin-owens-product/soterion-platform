@@ -264,6 +264,19 @@ export function getQueueMetrics(checkpointId: string): Promise<QueueMetrics> {
   return apiFetch<QueueMetrics>(`/api/v1/lidar/queue/${checkpointId}`);
 }
 
+export interface DensitySnapshot {
+  bucket: string;
+  zoneId: string;
+  zoneName: string;
+  avgCount: number;
+  avgDensityPct: number;
+  avgDwellSecs: number;
+}
+
+export async function getDensityHistory(minutes = 120): Promise<{ snapshots: DensitySnapshot[] }> {
+  return apiFetch(`/api/v1/lidar/density-history?minutes=${minutes}`);
+}
+
 // ── Sensors ─────────────────────────────────────────────
 
 export async function getSensors(): Promise<SensorNode[]> {
