@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFacilityStore } from "@/store/facilityStore";
-import { getZoneDensities, getZones } from "@/lib/api";
+import { getZoneDensities, getZones, getSurgePredictions } from "@/lib/api";
+import type { SurgePrediction } from "@/lib/api";
 import type { Zone, ZoneDensity, ZoneTypeDefinition } from "@/types";
 
 function getDensityColor(pct: number): { bar: string; text: string } {
@@ -78,7 +79,7 @@ function isSecurityCheckpoint(zone: Zone, zoneTypes: ZoneTypeDefinition[]): bool
   return false;
 }
 
-function QueueMetricsSection({ zone, density }: { zone: Zone; density: ZoneDensity | undefined }) {
+function QueueMetricsSection({ zone, density, prediction }: { zone: Zone; density: ZoneDensity | undefined; prediction: SurgePrediction | undefined }) {
   const currentCount = density?.count ?? getZoneOccupancy(zone);
   const densityPct = density?.densityPct ?? getZoneDensityPct(zone);
 
@@ -114,6 +115,29 @@ function QueueMetricsSection({ zone, density }: { zone: Zone; density: ZoneDensi
           </span>
         </div>
       </div>
+      {prediction && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <div style={{ flex: 1, padding: '6px 8px', background: '#111', borderRadius: 4, textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: '#525252', fontFamily: 'IBM Plex Mono', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>+15 min</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#d4d4d4', fontFamily: 'IBM Plex Mono' }}>
+              {prediction.predictedDensity_15m != null ? `${Number(prediction.predictedDensity_15m).toFixed(0)}%` : '—'}
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: '6px 8px', background: '#111', borderRadius: 4, textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: '#525252', fontFamily: 'IBM Plex Mono', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>+30 min</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#d4d4d4', fontFamily: 'IBM Plex Mono' }}>
+              {prediction.predictedDensity_30m != null ? `${Number(prediction.predictedDensity_30m).toFixed(0)}%` : '—'}
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: '6px 8px', background: '#111', borderRadius: 4, textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: '#525252', fontFamily: 'IBM Plex Mono', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Risk</div>
+            <div style={{ fontSize: 14, fontWeight: 600, fontFamily: 'IBM Plex Mono',
+              color: prediction.surgeRisk === 'CRITICAL' ? '#ef4444' : prediction.surgeRisk === 'HIGH' ? '#f97316' : prediction.surgeRisk === 'MEDIUM' ? '#f59e0b' : '#22c55e' }}>
+              {prediction.surgeRisk}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -124,12 +148,14 @@ function ZoneCard({
   expanded,
   onToggle,
   zoneTypes,
+  prediction,
 }: {
   zone: Zone;
   density: ZoneDensity | undefined;
   expanded: boolean;
   onToggle: () => void;
   zoneTypes: ZoneTypeDefinition[];
+  prediction: SurgePrediction | undefined;
 }) {
   const densityPct = density
     ? density.densityPct
@@ -203,7 +229,7 @@ function ZoneCard({
         </div>
 
         {/* Queue metrics for checkpoint zones */}
-        {isCheckpoint && <QueueMetricsSection zone={zone} density={density} />}
+        {isCheckpoint && <QueueMetricsSection zone={zone} density={density} prediction={prediction} />}
       </div>
 
       {/* Expanded details */}
@@ -291,6 +317,21 @@ export function W03_ZonePanel() {
     }
   }, [storeZones.length, apiZones, setZones]);
 
+  const surgeQuery = useQuery<SurgePrediction[]>({
+    queryKey: ["surge-predictions"],
+    queryFn: getSurgePredictions,
+    refetchInterval: 30_000,
+  });
+
+  const predictionMap = useMemo(() => {
+    const m = new Map<string, SurgePrediction>();
+    const predictions = Array.isArray(surgeQuery.data) ? surgeQuery.data : [];
+    for (const p of predictions) {
+      m.set(p.zoneId, p);
+    }
+    return m;
+  }, [surgeQuery.data]);
+
   const densityQuery = useQuery<ZoneDensity[]>({
     queryKey: ["zone-densities"],
     queryFn: () => getZoneDensities(),
@@ -347,6 +388,7 @@ export function W03_ZonePanel() {
                 setExpandedId((prev) => (prev === zone.id ? null : zone.id))
               }
               zoneTypes={zoneTypes}
+              prediction={predictionMap.get(zone.id)}
             />
           ))
         )}
