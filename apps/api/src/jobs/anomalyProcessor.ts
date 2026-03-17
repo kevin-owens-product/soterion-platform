@@ -1,15 +1,11 @@
 import { Worker, Job } from 'bullmq';
 import sql from '../db/client.js';
-import { publishAlert, type AlertPayload } from '../lib/redis.js';
+import { publishAlert, parseBullMQConnection, type AlertPayload } from '../lib/redis.js';
 import type { AnomalyJobPayload } from './queues.js';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
-const connection = {
-  host: new URL(REDIS_URL).hostname || 'localhost',
-  port: parseInt(new URL(REDIS_URL).port || '6379', 10),
-};
+const connection = parseBullMQConnection();
 
 interface MLPrediction {
   track_id: string;

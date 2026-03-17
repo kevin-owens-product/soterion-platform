@@ -1,6 +1,29 @@
 import { Redis } from 'ioredis';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+export const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+// --------------------------------------------------------------------------
+// Parse Redis URL into BullMQ-compatible connection options.
+// Handles password and TLS (rediss://) for Render-hosted Redis.
+// --------------------------------------------------------------------------
+export function parseBullMQConnection(url: string = REDIS_URL) {
+  const parsed = new URL(url);
+  const opts: Record<string, unknown> = {
+    host: parsed.hostname || 'localhost',
+    port: parseInt(parsed.port || '6379', 10),
+    maxRetriesPerRequest: null,
+  };
+  if (parsed.password) {
+    opts.password = decodeURIComponent(parsed.password);
+  }
+  if (parsed.username && parsed.username !== 'default') {
+    opts.username = decodeURIComponent(parsed.username);
+  }
+  if (parsed.protocol === 'rediss:') {
+    opts.tls = {};
+  }
+  return opts;
+}
 
 // --------------------------------------------------------------------------
 // Main client for general get/set/publish operations

@@ -1,14 +1,9 @@
 import { Worker, Job } from 'bullmq';
 import sql from '../db/client.js';
-import { publishBadgeUnlock, type BadgeUnlockPayload } from '../lib/redis.js';
+import { publishBadgeUnlock, parseBullMQConnection, type BadgeUnlockPayload } from '../lib/redis.js';
 import type { BadgeJobPayload } from './queues.js';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-
-const connection = {
-  host: new URL(REDIS_URL).hostname || 'localhost',
-  port: parseInt(new URL(REDIS_URL).port || '6379', 10),
-};
+const connection = parseBullMQConnection();
 
 // --------------------------------------------------------------------------
 // Badge criteria definitions

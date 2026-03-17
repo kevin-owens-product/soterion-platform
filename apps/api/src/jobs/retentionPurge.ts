@@ -1,12 +1,8 @@
 import { Worker, Queue } from 'bullmq';
 import sql from '../db/client.js';
+import { parseBullMQConnection } from '../lib/redis.js';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-
-const defaultConnection = {
-  host: new URL(REDIS_URL).hostname || 'localhost',
-  port: parseInt(new URL(REDIS_URL).port || '6379', 10),
-};
+const defaultConnection = parseBullMQConnection();
 
 // ---------------------------------------------------------------------------
 // Retention Purge Queue
