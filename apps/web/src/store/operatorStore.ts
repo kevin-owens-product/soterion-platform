@@ -37,7 +37,7 @@ export const useOperatorStore = create<OperatorState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await apiLogin(email, password);
-      const token = response.token || response.access_token || "";
+      const token = response.accessToken || response.access_token || response.token || "";
       localStorage.setItem("soterion_token", token);
       set({
         currentOperator: response.operator,
