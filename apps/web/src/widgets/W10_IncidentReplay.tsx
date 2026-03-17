@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getAlerts } from "@/lib/api";
+import { getAlerts, getIncidentTracks } from "@/lib/api";
 import type { AnomalyEvent } from "@/types";
+import type { IncidentFrame } from "@/lib/api";
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -34,16 +35,47 @@ function formatDate(ts: string | undefined | null): string {
   }
 }
 
+/** Bucket an ISO timestamp to the nearest second */
+function bucketToSecond(iso: string): string {
+  try {
+    const d = new Date(iso);
+    d.setMilliseconds(0);
+    return d.toISOString();
+  } catch {
+    return iso;
+  }
+}
+
+/* ── types ───────────────────────────────────────────── */
+
+interface FrameGroup {
+  time: string;
+  tracks: IncidentFrame[];
+}
+
+interface TrailData {
+  points: { x: number; y: number }[];
+  color: string;
+}
+
 /* ── component ───────────────────────────────────────── */
 
 export function W10_IncidentReplay() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [playbackIndex, setPlaybackIndex] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const alertsQ = useQuery({
     queryKey: ["alerts-replay"],
     queryFn: () => getAlerts(),
     refetchInterval: 10_000,
+  });
+
+  const tracksQ = useQuery({
+    queryKey: ["incident-tracks", selectedId],
+    queryFn: () => getIncidentTracks(selectedId!),
+    enabled: !!selectedId,
   });
 
   const alerts: AnomalyEvent[] = useMemo(() => {
@@ -55,6 +87,159 @@ export function W10_IncidentReplay() {
     () => alerts.find((a) => a.id === selectedId) ?? null,
     [alerts, selectedId],
   );
+
+  /* ── Process frames into chronological groups ── */
+  const frameGroups: FrameGroup[] = useMemo(() => {
+    const frames = tracksQ.data?.frames;
+    if (!frames || frames.length === 0) return [];
+
+    const bucketMap = new Map<string, IncidentFrame[]>();
+    for (const frame of frames) {
+      const key = bucketToSecond(frame.time);
+      const existing = bucketMap.get(key);
+      if (existing) {
+        existing.push(frame);
+      } else {
+        bucketMap.set(key, [frame]);
+      }
+    }
+
+    return Array.from(bucketMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([time, tracks]) => ({ time, tracks }));
+  }, [tracksQ.data]);
+
+  const totalFrames = frameGroups.length;
+
+  /* ── Compute coordinate bounds for SVG mapping ── */
+  const bounds = useMemo(() => {
+    const frames = tracksQ.data?.frames;
+    if (!frames || frames.length === 0) {
+      return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+    }
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const f of frames) {
+      if (f.centroid.x < minX) minX = f.centroid.x;
+      if (f.centroid.x > maxX) maxX = f.centroid.x;
+      if (f.centroid.y < minY) minY = f.centroid.y;
+      if (f.centroid.y > maxY) maxY = f.centroid.y;
+    }
+    // Prevent zero-range
+    if (maxX === minX) { minX -= 1; maxX += 1; }
+    if (maxY === minY) { minY -= 1; maxY += 1; }
+    return { minX, maxX, minY, maxY };
+  }, [tracksQ.data]);
+
+  const mapX = useCallback(
+    (x: number) => 10 + ((x - bounds.minX) / (bounds.maxX - bounds.minX)) * 180,
+    [bounds],
+  );
+  const mapY = useCallback(
+    (y: number) => 10 + ((y - bounds.minY) / (bounds.maxY - bounds.minY)) * 100,
+    [bounds],
+  );
+
+  /* ── Current frame tracks ── */
+  const currentFrameTracks: IncidentFrame[] = useMemo(() => {
+    if (totalFrames === 0) return [];
+    const idx = Math.min(playbackIndex, totalFrames - 1);
+    return frameGroups[idx]?.tracks ?? [];
+  }, [frameGroups, playbackIndex, totalFrames]);
+
+  /* ── Trail lines: collect points per trackId up to current playback index ── */
+  const trailsByTrack: TrailData[] = useMemo(() => {
+    if (totalFrames === 0) return [];
+    const idx = Math.min(playbackIndex, totalFrames - 1);
+    const trailMap = new Map<string, { points: { x: number; y: number }[]; classification: string; maxBehavior: number }>();
+
+    for (let i = 0; i <= idx; i++) {
+      const group = frameGroups[i];
+      if (!group) continue;
+      for (const track of group.tracks) {
+        const existing = trailMap.get(track.trackId);
+        if (existing) {
+          existing.points.push({ x: track.centroid.x, y: track.centroid.y });
+          if (track.behaviorScore > existing.maxBehavior) {
+            existing.maxBehavior = track.behaviorScore;
+          }
+        } else {
+          trailMap.set(track.trackId, {
+            points: [{ x: track.centroid.x, y: track.centroid.y }],
+            classification: track.classification,
+            maxBehavior: track.behaviorScore,
+          });
+        }
+      }
+    }
+
+    return Array.from(trailMap.values()).map((t) => ({
+      points: t.points,
+      color: t.maxBehavior > 70 ? "#ef4444" : t.classification === "PERSON" ? "#06b6d4" : "#f59e0b",
+    }));
+  }, [frameGroups, playbackIndex, totalFrames]);
+
+  /* ── Frame label ── */
+  const frameLabel = useMemo(() => {
+    if (totalFrames === 0) return "No track data";
+    const idx = Math.min(playbackIndex, totalFrames - 1);
+    const group = frameGroups[idx];
+    if (!group) return "---";
+    return formatTime(group.time);
+  }, [frameGroups, playbackIndex, totalFrames]);
+
+  /* ── Reset playback when selectedId changes ── */
+  useEffect(() => {
+    setPlaybackIndex(0);
+    setPlaying(false);
+  }, [selectedId]);
+
+  /* ── Playback interval ── */
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    if (playing && totalFrames > 0) {
+      intervalRef.current = setInterval(() => {
+        setPlaybackIndex((prev) => {
+          if (prev >= totalFrames - 1) {
+            setPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 200);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [playing, totalFrames]);
+
+  /* ── Transport control handlers ── */
+  const handleSkipBack = useCallback(() => {
+    setPlaybackIndex(0);
+    setPlaying(false);
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
+    if (!playing && playbackIndex >= totalFrames - 1 && totalFrames > 0) {
+      // If at end, restart from beginning
+      setPlaybackIndex(0);
+    }
+    setPlaying((p) => !p);
+  }, [playing, playbackIndex, totalFrames]);
+
+  const handleSkipForward = useCallback(() => {
+    if (totalFrames > 0) {
+      setPlaybackIndex(totalFrames - 1);
+    }
+    setPlaying(false);
+  }, [totalFrames]);
 
   /* 24h timeline positioning */
   function timelinePos(ts: string | undefined | null): number {
@@ -312,6 +497,37 @@ export function W10_IncidentReplay() {
                 </div>
               ))}
 
+              {/* SVG Mini Zone Map */}
+              {totalFrames > 0 && (
+                <svg viewBox="0 0 200 120" style={{ width: '100%', height: 120, background: '#0a0a0a', borderRadius: 4, border: '1px solid #1a1a1a', marginTop: 8 }}>
+                  {/* Zone boundary */}
+                  <rect x={5} y={5} width={190} height={110} rx={4} fill="none" stroke="#1a1a1a" strokeWidth={0.5} />
+                  {/* Grid lines */}
+                  <line x1={100} y1={5} x2={100} y2={115} stroke="#1a1a1a" strokeWidth={0.3} />
+                  <line x1={5} y1={60} x2={195} y2={60} stroke="#1a1a1a" strokeWidth={0.3} />
+                  {/* Trail lines */}
+                  {trailsByTrack.map((trail, i) => (
+                    <polyline key={`trail-${i}`}
+                      points={trail.points.map(p => `${mapX(p.x)},${mapY(p.y)}`).join(' ')}
+                      fill="none" stroke={trail.color} strokeWidth={1} opacity={0.3} />
+                  ))}
+                  {/* Track positions at current frame */}
+                  {currentFrameTracks.map((track, i) => (
+                    <circle key={i}
+                      cx={mapX(track.centroid.x)} cy={mapY(track.centroid.y)}
+                      r={track.behaviorScore > 70 ? 5 : 3}
+                      fill={track.behaviorScore > 70 ? '#ef4444' : track.classification === 'PERSON' ? '#06b6d4' : '#f59e0b'}
+                      opacity={0.9}>
+                      <animate attributeName="opacity" values="0.9;0.5;0.9" dur="1.5s" repeatCount="indefinite" />
+                    </circle>
+                  ))}
+                  {/* Label */}
+                  <text x={10} y={16} fill="#525252" fontSize={7} fontFamily="IBM Plex Mono">
+                    {frameLabel}
+                  </text>
+                </svg>
+              )}
+
               {/* Description */}
               {selected.description && (
                 <div
@@ -353,9 +569,9 @@ export function W10_IncidentReplay() {
           }}
         >
           {[
-            { label: "⏮", action: () => {} },
-            { label: playing ? "⏸" : "▶", action: () => setPlaying(!playing) },
-            { label: "⏭", action: () => {} },
+            { label: "\u23EE", action: handleSkipBack },
+            { label: playing ? "\u23F8" : "\u25B6", action: handlePlayPause },
+            { label: "\u23ED", action: handleSkipForward },
           ].map((btn, i) => (
             <button
               key={i}
@@ -378,7 +594,53 @@ export function W10_IncidentReplay() {
               {btn.label}
             </button>
           ))}
+
+          {/* Frame counter */}
+          {selectedId && totalFrames > 0 && (
+            <span
+              style={{
+                fontFamily: "'IBM Plex Mono', monospace",
+                fontSize: 9,
+                color: "#737373",
+                marginLeft: 4,
+              }}
+            >
+              Frame {Math.min(playbackIndex + 1, totalFrames)}/{totalFrames}
+              {currentFrameTracks.length > 0 && (
+                <span style={{ color: "#525252", marginLeft: 6 }}>
+                  {currentFrameTracks.length} track{currentFrameTracks.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </span>
+          )}
         </div>
+
+        {/* Playback timeline slider (frame-level) */}
+        {selectedId && totalFrames > 1 && (
+          <div style={{ marginBottom: 6 }}>
+            <input
+              type="range"
+              min={0}
+              max={totalFrames - 1}
+              value={Math.min(playbackIndex, totalFrames - 1)}
+              onChange={(e) => {
+                setPlaybackIndex(Number(e.target.value));
+                setPlaying(false);
+              }}
+              style={{
+                width: "100%",
+                height: 4,
+                appearance: "none",
+                WebkitAppearance: "none",
+                background: "#1a1a1a",
+                borderRadius: 2,
+                outline: "none",
+                cursor: "pointer",
+                accentColor: "#f59e0b",
+              }}
+            />
+          </div>
+        )}
 
         {/* 24h timeline bar */}
         <div style={{ position: "relative", height: 16 }}>
