@@ -238,16 +238,49 @@ async function start() {
     fastify.log.error({ err }, 'Auto-migration failed');
   }
 
-  // --- Auto-seed if database is empty ---
+  // --- Auto-seed if database is empty or incomplete ---
   try {
     const { readFileSync } = await import('node:fs');
     const { join } = await import('node:path');
-    const rows = await sql`SELECT COUNT(*)::int AS cnt FROM airports`;
-    if (rows[0].cnt === 0) {
+
+    // Check if core seed data exists
+    const airportRows = await sql`SELECT COUNT(*)::int AS cnt FROM airports`;
+    if (airportRows[0].cnt === 0) {
       const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
       const seedSql = readFileSync(seedPath, 'utf-8');
       await sql.unsafe(seedSql);
-      fastify.log.info('Seed data applied (database was empty)');
+      fastify.log.info('Full seed data applied (database was empty)');
+    } else {
+      // Core data exists — check if extended seed data is missing
+      const alertRows = await sql`SELECT COUNT(*)::int AS cnt FROM anomaly_events`;
+      if (alertRows[0].cnt === 0) {
+        fastify.log.info('Core seed exists but extended data missing — re-seeding...');
+        // Drop and re-seed everything to get a clean state
+        await sql.unsafe(`
+          DELETE FROM mission_progress WHERE TRUE;
+          DELETE FROM operator_badges WHERE TRUE;
+          DELETE FROM operator_roles WHERE TRUE;
+          DELETE FROM role_permissions WHERE TRUE;
+          DELETE FROM vulnerability_findings WHERE TRUE;
+          DELETE FROM security_incidents WHERE TRUE;
+          DELETE FROM retention_policies WHERE TRUE;
+          DELETE FROM track_objects WHERE TRUE;
+          DELETE FROM queue_metrics WHERE TRUE;
+          DELETE FROM zone_density WHERE TRUE;
+          DELETE FROM anomaly_events WHERE TRUE;
+          DELETE FROM shift_scores WHERE TRUE;
+          DELETE FROM permissions WHERE TRUE;
+          DELETE FROM roles WHERE TRUE;
+        `);
+        const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
+        const seedSql = readFileSync(seedPath, 'utf-8');
+        // Extract only the new sections (from section 12 onward)
+        const extendedStart = seedSql.indexOf('-- 12. Anomaly Events');
+        if (extendedStart !== -1) {
+          await sql.unsafe(seedSql.substring(extendedStart));
+          fastify.log.info('Extended seed data applied');
+        }
+      }
     }
   } catch (err) {
     fastify.log.warn({ err }, 'Auto-seed skipped (non-fatal)');
