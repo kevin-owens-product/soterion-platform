@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getZones, getSensors } from "@/lib/api";
+import { getZones, getSensors, getDensityHistory } from "@/lib/api";
+import type { DensitySnapshot } from "@/lib/api";
 import type { Zone } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -17,6 +18,20 @@ function getDensityPct(zone: any): number {
   if (zone.currentDensityPct != null) return parseFloat(zone.currentDensityPct) || 0;
   if (zone.maxOccupancy > 0) return ((zone.occupancy ?? 0) / zone.maxOccupancy) * 100;
   return 0;
+}
+
+function formatRelativeTime(isoTimestamp: string): string {
+  const now = Date.now();
+  const then = new Date(isoTimestamp).getTime();
+  const diffMs = now - then;
+  if (diffMs < 0) return "now";
+  const totalMins = Math.round(diffMs / 60_000);
+  if (totalMins < 1) return "now";
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours > 0 && mins > 0) return `${hours}h ${mins}m ago`;
+  if (hours > 0) return `${hours}h ago`;
+  return `${mins}m ago`;
 }
 
 /* ── Legend ───────────────────────────────────────────── */
@@ -71,6 +86,14 @@ function Legend() {
 export function W04_Heatmap() {
   const zonesQ = useQuery({ queryKey: ["zones"], queryFn: getZones, refetchInterval: 5_000 });
   const sensorsQ = useQuery({ queryKey: ["sensors"], queryFn: getSensors, refetchInterval: 5_000 });
+  const historyQ = useQuery({
+    queryKey: ["density-history"],
+    queryFn: () => getDensityHistory(120),
+    refetchInterval: 60_000,
+  });
+
+  const [playing, setPlaying] = useState(false);
+  const [frameIndex, setFrameIndex] = useState(-1); // -1 means LIVE
 
   const zones: Zone[] = useMemo(
     () => (Array.isArray(zonesQ.data) ? zonesQ.data : []),
@@ -86,6 +109,70 @@ export function W04_Heatmap() {
     }
     return m;
   }, [sensorsQ.data]);
+
+  // Process history data into frames: array of { bucket, densityByZone }
+  const frames = useMemo(() => {
+    const snapshots: DensitySnapshot[] = historyQ.data?.snapshots ?? [];
+    if (snapshots.length === 0) return [];
+
+    // Group by bucket timestamp
+    const bucketMap = new Map<string, Map<string, number>>();
+    for (const snap of snapshots) {
+      let zoneMap = bucketMap.get(snap.bucket);
+      if (!zoneMap) {
+        zoneMap = new Map<string, number>();
+        bucketMap.set(snap.bucket, zoneMap);
+      }
+      zoneMap.set(snap.zoneId, snap.avgDensityPct);
+    }
+
+    // Sort chronologically
+    const sorted = Array.from(bucketMap.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([bucket, densityByZone]) => ({ bucket, densityByZone }));
+
+    return sorted;
+  }, [historyQ.data]);
+
+  // Playback interval
+  useEffect(() => {
+    if (!playing) return;
+    const iv = setInterval(() => {
+      setFrameIndex((prev) => {
+        const next = prev + 1;
+        if (next >= frames.length) {
+          setPlaying(false);
+          return -1; // back to LIVE
+        }
+        return next;
+      });
+    }, 500);
+    return () => clearInterval(iv);
+  }, [playing, frames.length]);
+
+  // Current frame's density map (null when LIVE)
+  const activeFrame = frameIndex >= 0 && frameIndex < frames.length
+    ? frames[frameIndex]
+    : undefined;
+  const currentFrameDensity = activeFrame?.densityByZone ?? null;
+
+  const timeLabel = activeFrame
+    ? formatRelativeTime(activeFrame.bucket)
+    : "LIVE";
+
+  const handlePlayPause = useCallback(() => {
+    if (playing) {
+      setPlaying(false);
+    } else {
+      if (frameIndex < 0) setFrameIndex(0);
+      setPlaying(true);
+    }
+  }, [playing, frameIndex]);
+
+  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPlaying(false);
+    setFrameIndex(Number(e.target.value));
+  }, []);
 
   return (
     <div
@@ -123,7 +210,7 @@ export function W04_Heatmap() {
           SPATIAL HEATMAP
         </span>
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#525252" }}>
-          REAL-TIME DENSITY
+          {frameIndex < 0 ? "REAL-TIME DENSITY" : "HISTORY PLAYBACK"}
         </span>
       </div>
 
@@ -155,7 +242,11 @@ export function W04_Heatmap() {
             }}
           >
             {zones.map((zone) => {
-              const pct = Math.max(0, Math.min(100, getDensityPct(zone)));
+              // When playing back history, use historical density; otherwise use live
+              const livePct = getDensityPct(zone);
+              const pct = currentFrameDensity
+                ? Math.max(0, Math.min(100, currentFrameDensity.get(zone.id) ?? livePct))
+                : Math.max(0, Math.min(100, livePct));
               const color = densityColor(pct);
               const sensorCount = sensorCountByZone.get(zone.id) ?? 0;
 
@@ -243,6 +334,58 @@ export function W04_Heatmap() {
           </div>
         )}
       </div>
+
+      {/* Transport bar */}
+      {frames.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "12px 16px 12px 16px",
+            borderTop: "1px solid #1a1a1a",
+            marginTop: 0,
+            flexShrink: 0,
+          }}
+        >
+          <button
+            onClick={handlePlayPause}
+            style={{
+              background: "#1a1a1a",
+              border: "1px solid #2a2a2a",
+              borderRadius: 4,
+              padding: "4px 12px",
+              color: playing ? "#f59e0b" : "#d4d4d4",
+              cursor: "pointer",
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 12,
+              minWidth: 36,
+              textAlign: "center",
+            }}
+          >
+            {playing ? "\u23F8" : "\u25B6"}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(frames.length - 1, 0)}
+            value={frameIndex < 0 ? frames.length - 1 : frameIndex}
+            onChange={handleSliderChange}
+            style={{ flex: 1, accentColor: "#f59e0b" }}
+          />
+          <span
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 10,
+              color: frameIndex < 0 ? "#22c55e" : "#737373",
+              minWidth: 72,
+              textAlign: "right",
+            }}
+          >
+            {frameIndex < 0 ? "\u25CF LIVE" : timeLabel}
+          </span>
+        </div>
+      )}
 
       {/* Legend */}
       <Legend />
