@@ -55,8 +55,8 @@ INSERT INTO kpi_definitions (id, facility_type, key, label, unit, direction, def
 
 -- Seaport operators
 INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) VALUES
-('op100000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'Tom H.', 'tom.h@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'operator', 'Quay'),
-('op100000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000001', 'Sarah M.', 'sarah.m@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'supervisor', 'Quay');
+('op100000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'Tom H.', 'tom.h@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Quay'),
+('op100000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000001', 'Sarah M.', 'sarah.m@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Quay');
 
 ------------------------------------------------------------
 -- 2. STADIUM — Wembley Stadium
@@ -115,9 +115,9 @@ INSERT INTO kpi_definitions (id, facility_type, key, label, unit, direction, def
 
 -- Stadium operators
 INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) VALUES
-('op200000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000001', 'Dave R.', 'dave.r@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'operator', 'North'),
-('op200000-0000-4000-8000-000000000002', 'f2000000-0000-4000-8000-000000000001', 'Lisa K.', 'lisa.k@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'operator', 'South'),
-('op200000-0000-4000-8000-000000000003', 'f2000000-0000-4000-8000-000000000001', 'Mark T.', 'mark.t@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'supervisor', 'Control');
+('op200000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000001', 'Dave R.', 'dave.r@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'North'),
+('op200000-0000-4000-8000-000000000002', 'f2000000-0000-4000-8000-000000000001', 'Lisa K.', 'lisa.k@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'South'),
+('op200000-0000-4000-8000-000000000003', 'f2000000-0000-4000-8000-000000000001', 'Mark T.', 'mark.t@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Control');
 
 ------------------------------------------------------------
 -- 3. TRANSIT HUB — King's Cross Station
@@ -171,8 +171,8 @@ INSERT INTO kpi_definitions (id, facility_type, key, label, unit, direction, def
 
 -- Transit Hub operators
 INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) VALUES
-('op300000-0000-4000-8000-000000000001', 'f3000000-0000-4000-8000-000000000001', 'Raj P.', 'raj.p@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'operator', 'Mainline'),
-('op300000-0000-4000-8000-000000000002', 'f3000000-0000-4000-8000-000000000001', 'Emma W.', 'emma.w@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'supervisor', 'Control');
+('op300000-0000-4000-8000-000000000001', 'f3000000-0000-4000-8000-000000000001', 'Raj P.', 'raj.p@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Mainline'),
+('op300000-0000-4000-8000-000000000002', 'f3000000-0000-4000-8000-000000000001', 'Emma W.', 'emma.w@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Control');
 
 ------------------------------------------------------------
 -- 4. HOSPITAL — St Thomas' Hospital
@@ -225,8 +225,8 @@ INSERT INTO kpi_definitions (id, facility_type, key, label, unit, direction, def
 
 -- Hospital operators
 INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) VALUES
-('op400000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'Dr. Kim N.', 'kim.n@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'supervisor', 'Security'),
-('op400000-0000-4000-8000-000000000002', 'f4000000-0000-4000-8000-000000000001', 'Alex B.', 'alex.b@soterion.io', '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe', 'operator', 'Security');
+('op400000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'Dr. Kim N.', 'kim.n@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'supervisor', 'Security'),
+('op400000-0000-4000-8000-000000000002', 'f4000000-0000-4000-8000-000000000001', 'Alex B.', 'alex.b@soterion.io', '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm', 'operator', 'Security');
 
 ------------------------------------------------------------
 -- 5. Compliance Frameworks per Vertical

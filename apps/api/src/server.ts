@@ -253,6 +253,21 @@ async function start() {
     fastify.log.warn({ err }, 'Auto-seed skipped (non-fatal)');
   }
 
+  // --- Fix bad seed password hashes (one-time) ---
+  try {
+    const badHash = '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe';
+    const fixedRows = await sql`
+      UPDATE operators SET password_hash = ${
+        '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm'
+      } WHERE password_hash = ${badHash} RETURNING id
+    `;
+    if (fixedRows.length > 0) {
+      fastify.log.info(`Fixed ${fixedRows.length} operator password hashes`);
+    }
+  } catch (err) {
+    fastify.log.warn({ err }, 'Password hash fix skipped (non-fatal)');
+  }
+
   // --- Start BullMQ workers ---
 
   const anomalyWorker = startAnomalyProcessor();

@@ -120,31 +120,31 @@ INSERT INTO operators (id, airport_id, name, email, password_hash, role, team) V
 ('e0000000-0000-4000-8000-000000000001',
  'a0000000-0000-4000-8000-000000000001',
  'Amara O.', 'amara.o@soterion.io',
- '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe',
+ '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm',
  'operator', 'Alpha'),
 
 ('e0000000-0000-4000-8000-000000000002',
  'a0000000-0000-4000-8000-000000000001',
  'James W.', 'james.w@soterion.io',
- '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe',
+ '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm',
  'operator', 'Bravo'),
 
 ('e0000000-0000-4000-8000-000000000003',
  'a0000000-0000-4000-8000-000000000001',
  'Priya S.', 'priya.s@soterion.io',
- '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe',
+ '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm',
  'supervisor', 'Alpha'),
 
 ('e0000000-0000-4000-8000-000000000004',
  'a0000000-0000-4000-8000-000000000001',
  'Chen L.', 'chen.l@soterion.io',
- '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe',
+ '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm',
  'operator', 'Charlie'),
 
 ('e0000000-0000-4000-8000-000000000005',
  'a0000000-0000-4000-8000-000000000001',
  'Admin User', 'admin@soterion.io',
- '$2b$12$LJ3m4ys3Lf0ZVh4fKJQfNOkHZP8Fk4fGSQj8MJvXrQl5b0GNjKWe',
+ '$2b$12$fONOquHEM99rwP4Hb50ujemOcSpkK0vI4arS/TrdUMNz2WPFumBWm',
  'admin', NULL);
 
 ------------------------------------------------------------
