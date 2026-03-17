@@ -242,43 +242,44 @@ async function start() {
   try {
     const { readFileSync } = await import('node:fs');
     const { join } = await import('node:path');
+    const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
+    const seedSql = readFileSync(seedPath, 'utf-8');
 
     // Check if core seed data exists
     const airportRows = await sql`SELECT COUNT(*)::int AS cnt FROM airports`;
     if (airportRows[0].cnt === 0) {
-      const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
-      const seedSql = readFileSync(seedPath, 'utf-8');
       await sql.unsafe(seedSql);
       fastify.log.info('Full seed data applied (database was empty)');
     } else {
       // Core data exists — check if extended seed data is missing
       const alertRows = await sql`SELECT COUNT(*)::int AS cnt FROM anomaly_events`;
       if (alertRows[0].cnt === 0) {
-        fastify.log.info('Core seed exists but extended data missing — re-seeding...');
-        // Drop and re-seed everything to get a clean state
-        await sql.unsafe(`
-          DELETE FROM mission_progress WHERE TRUE;
-          DELETE FROM operator_badges WHERE TRUE;
-          DELETE FROM operator_roles WHERE TRUE;
-          DELETE FROM role_permissions WHERE TRUE;
-          DELETE FROM vulnerability_findings WHERE TRUE;
-          DELETE FROM security_incidents WHERE TRUE;
-          DELETE FROM retention_policies WHERE TRUE;
-          DELETE FROM track_objects WHERE TRUE;
-          DELETE FROM queue_metrics WHERE TRUE;
-          DELETE FROM zone_density WHERE TRUE;
-          DELETE FROM anomaly_events WHERE TRUE;
-          DELETE FROM shift_scores WHERE TRUE;
-          DELETE FROM permissions WHERE TRUE;
-          DELETE FROM roles WHERE TRUE;
-        `);
-        const seedPath = join(process.cwd(), '..', '..', 'infra', 'db', 'seed.sql');
-        const seedSql = readFileSync(seedPath, 'utf-8');
-        // Extract only the new sections (from section 12 onward)
+        fastify.log.info('Core seed exists but extended data missing — applying extended seed...');
+
+        // Clean dependent tables one by one (ignore errors for tables that don't exist)
+        const tablesToClean = [
+          'mission_progress', 'operator_badges', 'operator_roles',
+          'role_permissions', 'vulnerability_findings', 'security_incidents',
+          'retention_policies', 'track_objects', 'queue_metrics',
+          'zone_density', 'anomaly_events', 'shift_scores',
+          'permissions', 'roles',
+        ];
+        for (const table of tablesToClean) {
+          await sql.unsafe(`DELETE FROM ${table}`).catch((e: Error) => {
+            fastify.log.warn(`Could not clean ${table}: ${e.message}`);
+          });
+        }
+
+        // Extract and run only the extended sections (from section 12 onward)
         const extendedStart = seedSql.indexOf('-- 12. Anomaly Events');
         if (extendedStart !== -1) {
-          await sql.unsafe(seedSql.substring(extendedStart));
-          fastify.log.info('Extended seed data applied');
+          try {
+            await sql.unsafe(seedSql.substring(extendedStart));
+            fastify.log.info('Extended seed data applied successfully');
+          } catch (e) {
+            fastify.log.error(`Extended seed FAILED: ${(e as Error).message}`);
+            fastify.log.error(`Stack: ${(e as Error).stack?.slice(0, 500)}`);
+          }
         }
       }
     }
