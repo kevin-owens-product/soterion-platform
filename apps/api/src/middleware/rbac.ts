@@ -200,11 +200,14 @@ export function requireAdminRole() {
       });
     }
 
+    // Check RBAC permissions first, then fall back to operator.role column
     const perms = await getOperatorPermissions(operator.id);
-    if (!perms.has('admin:access')) {
+    const hasAdminPerm = perms.has('admin:read') || perms.has('admin:write') || perms.has('admin:access');
+    const hasAdminRole = operator.role === 'admin' || operator.role === 'platform_admin';
+    if (!hasAdminPerm && !hasAdminRole) {
       return reply.code(403).send({
         error: 'Forbidden',
-        message: 'Admin access required. You do not have the admin:access permission.',
+        message: 'Admin access required.',
       });
     }
   };
