@@ -152,7 +152,7 @@ export function AdminLayout() {
 
   // Route guard: only admin and platform_admin roles
   if (operator && !ADMIN_ROLES.includes(operator.role)) {
-    return <Navigate to="/ops" replace />;
+    return <Navigate to="/app/ops" replace />;
   }
 
   return (
@@ -192,7 +192,7 @@ export function AdminLayout() {
 
         <div className="px-4 py-3 border-t border-soterion-border">
           <NavLink
-            to="/ops"
+            to="/app/ops"
             className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

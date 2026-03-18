@@ -9,7 +9,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { Login } from "@/views/Login";
 import { Demo } from "@/views/Demo";
-import { DemoLanding } from "@/views/DemoLanding";
+
 import { Mobile } from "@/views/Mobile";
 import { OpsCenter } from "@/views/OpsCenter";
 import { Security } from "@/views/Security";
@@ -32,6 +32,7 @@ import { ApiDocs } from "@/views/ApiDocs";
 import { Signup } from "@/views/Signup";
 import { ShiftHandoff } from "@/views/ShiftHandoff";
 import { Analytics } from "@/views/Analytics";
+import { Homepage } from "@/views/Homepage";
 import "@/styles/tokens.css";
 
 const queryClient = new QueryClient({
@@ -46,6 +47,10 @@ const queryClient = new QueryClient({
 
 const router = createBrowserRouter([
   {
+    path: "/",
+    element: <Homepage />,
+  },
+  {
     path: "/login",
     element: <Login />,
   },
@@ -59,7 +64,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/welcome",
-    element: <DemoLanding />,
+    element: <Navigate to="/" replace />,
   },
   {
     path: "/docs/api",
@@ -70,7 +75,7 @@ const router = createBrowserRouter([
     element: <Signup />,
   },
   {
-    path: "/",
+    path: "/app",
     element: <AppShell />,
     errorElement: (
       <div
@@ -105,7 +110,7 @@ const router = createBrowserRouter([
           Something went wrong.
         </p>
         <a
-          href="/ops"
+          href="/app/ops"
           style={{
             fontSize: "12px",
             color: "#f59e0b",
@@ -118,7 +123,7 @@ const router = createBrowserRouter([
       </div>
     ),
     children: [
-      { index: true, element: <Navigate to="/ops" replace /> },
+      { index: true, element: <Navigate to="/app/ops" replace /> },
       { path: "ops", element: <OpsCenter /> },
       { path: "security", element: <Security /> },
       { path: "leaderboard", element: <Leaderboard /> },
@@ -129,7 +134,7 @@ const router = createBrowserRouter([
         path: "admin",
         element: <AdminLayout />,
         children: [
-          { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+          { index: true, element: <Navigate to="/app/admin/dashboard" replace /> },
           { path: "dashboard", element: <AdminDashboard /> },
           { path: "facilities", element: <AdminFacilitiesList /> },
           { path: "operators", element: <OperatorManagement /> },

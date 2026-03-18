@@ -97,7 +97,7 @@ export function Sidebar() {
               <div className="h-px bg-soterion-border" />
             </div>
             <NavLink
-              to="/admin"
+              to="/app/admin"
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                   isActive
