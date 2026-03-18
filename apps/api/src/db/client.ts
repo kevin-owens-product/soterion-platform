@@ -2,7 +2,7 @@ import postgres from 'postgres';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://soterion:password@localhost:5434/soterion';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://soterion:password@localhost:5435/soterion';
 
 const sql = postgres(DATABASE_URL, {
   max: 20,
