@@ -286,6 +286,28 @@ export async function updateAlertRule(_id: string, _data: unknown) { return (awa
 export async function deleteAlertRule(_id: string) { return { message: "Deleted" }; }
 export async function toggleAlertRule(_id: string) { return (await getAlertRules())[0]; }
 
+// ── Track Paths ─────────────────────────────────────────
+const CLASSIFICATIONS = ["PERSON", "VEHICLE", "OBJECT", "UNKNOWN"] as const;
+const MOCK_TRACKS = Array.from({ length: 14 }, (_, i) => {
+  const cls = CLASSIFICATIONS[i % 4];
+  const score = i % 3 === 0 ? 75 + Math.round(Math.random() * 20) : Math.round(Math.random() * 50);
+  const baseX = 10 + Math.random() * 60;
+  const baseY = 10 + Math.random() * 60;
+  const now = Date.now();
+  const numPts = 6 + Math.floor(Math.random() * 8);
+  const pts = Array.from({ length: numPts }, (__, j) => ({
+    x: baseX + j * (2 + Math.random() * 4) * (i % 2 === 0 ? 1 : -0.5),
+    y: baseY + j * (1.5 + Math.random() * 3) * (i % 3 === 0 ? -1 : 1),
+    z: 0,
+    t: now - (numPts - j) * 2000,
+  }));
+  return { trackId: `trk-${i}`, classification: cls, maxBehaviorScore: score, maxVelocity: +(0.5 + Math.random() * 3).toFixed(2), points: pts };
+});
+
+export async function getTrackPaths(_zoneId?: string, _minutes?: number) {
+  return { tracks: MOCK_TRACKS };
+}
+
 // ── Low-level fetch helpers (no-ops in demo mode) ───────
 export async function apiFetch<T = unknown>(_path: string, _options?: unknown): Promise<T> {
   return {} as T;

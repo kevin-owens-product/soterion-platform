@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getZones, getSensors } from "@/lib/api";
+import { getZones, getSensors, getTrackPaths } from "@/lib/api";
+import type { TrackPath } from "@/lib/api";
 import type { Zone, SensorNode } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -18,6 +19,13 @@ function statusColor(s: string): string {
   if (s === "degraded") return "#f59e0b";
   return "#ef4444";
 }
+
+const TRACK_CLASS_COLORS: Record<string, string> = {
+  PERSON: "#06b6d4",
+  VEHICLE: "#f59e0b",
+  OBJECT: "#737373",
+  UNKNOWN: "#525252",
+};
 
 /* Terminal layout positions — 5 canonical airport zones */
 const ZONE_LAYOUT: Record<string, { row: number; col: number; colSpan: number; rowSpan: number }> = {
@@ -44,11 +52,45 @@ function layoutFor(zone: Zone, idx: number) {
   return fallbacks[idx % fallbacks.length]!;
 }
 
+/** Normalize all track points into 0-100 SVG coordinate space */
+function normalizeTrackPoints(tracks: TrackPath[]): TrackPath[] {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const t of tracks) {
+    for (const p of t.points) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+  }
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  // Add small padding (5%) so tracks don't touch edges
+  const pad = 5;
+  const scale = 100 - pad * 2;
+
+  return tracks.map((t) => ({
+    ...t,
+    points: t.points.map((p) => ({
+      ...p,
+      x: pad + ((p.x - minX) / rangeX) * scale,
+      y: pad + ((p.y - minY) / rangeY) * scale,
+    })),
+  }));
+}
+
 /* ── component ───────────────────────────────────────── */
 
 export function W01_DigitalTwin() {
+  const [showTracks, setShowTracks] = useState(true);
+
   const zonesQ = useQuery({ queryKey: ["zones"], queryFn: getZones, refetchInterval: 5_000 });
   const sensorsQ = useQuery({ queryKey: ["sensors"], queryFn: getSensors, refetchInterval: 5_000 });
+  const tracksQ = useQuery({
+    queryKey: ["track-paths"],
+    queryFn: () => getTrackPaths(undefined, 10),
+    refetchInterval: 10_000,
+  });
 
   const zones: Zone[] = useMemo(() => {
     const arr = Array.isArray(zonesQ.data) ? zonesQ.data : [];
@@ -78,6 +120,12 @@ export function W01_DigitalTwin() {
     () => sensors.filter((s) => s.status === "online" || s.status === "degraded").length,
     [sensors],
   );
+
+  const trackData = tracksQ.data?.tracks;
+  const normalizedTracks = useMemo(() => {
+    if (!trackData || trackData.length === 0) return [];
+    return normalizeTrackPoints(trackData);
+  }, [trackData]);
 
   return (
     <div
@@ -114,7 +162,25 @@ export function W01_DigitalTwin() {
         >
           FACILITY DIGITAL TWIN
         </span>
-        <div style={{ display: "flex", gap: 14 }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          {/* Track toggle pill */}
+          <button
+            onClick={() => setShowTracks((v) => !v)}
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 9,
+              letterSpacing: "0.05em",
+              padding: "2px 8px",
+              borderRadius: 9999,
+              border: `1px solid ${showTracks ? "#06b6d4" : "#525252"}`,
+              background: showTracks ? "#06b6d420" : "transparent",
+              color: showTracks ? "#06b6d4" : "#525252",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+          >
+            TRACKS
+          </button>
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#737373" }}>
             ZONES{" "}
             <span style={{ color: "#d4d4d4", fontFamily: "'Bebas Neue', sans-serif", fontSize: 14 }}>
@@ -131,7 +197,7 @@ export function W01_DigitalTwin() {
       </div>
 
       {/* ── Floor Plan Grid ── */}
-      <div style={{ flex: 1, padding: 12, overflow: "auto", minHeight: 0 }}>
+      <div style={{ flex: 1, padding: 12, overflow: "auto", minHeight: 0, position: "relative" }}>
         {zones.length === 0 ? (
           <div
             style={{
@@ -157,6 +223,7 @@ export function W01_DigitalTwin() {
               width: "100%",
               height: "100%",
               minHeight: 180,
+              position: "relative",
             }}
           >
             {zones.map((zone, idx) => {
@@ -280,6 +347,57 @@ export function W01_DigitalTwin() {
                 </div>
               );
             })}
+
+            {/* ── Track Path SVG Overlay ── */}
+            {showTracks && normalizedTracks.length > 0 && (
+              <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                }}
+              >
+                {normalizedTracks.map((track) => {
+                  const isHighRisk = track.maxBehaviorScore > 70;
+                  const strokeColor = isHighRisk
+                    ? "#ef4444"
+                    : TRACK_CLASS_COLORS[track.classification] ?? "#525252";
+                  const strokeWidth = isHighRisk ? 2 : 1;
+                  const opacity = isHighRisk ? 0.85 : 0.5;
+                  const pointsStr = track.points.map((p) => `${p.x},${p.y}`).join(" ");
+                  const lastPt = track.points[track.points.length - 1];
+
+                  return (
+                    <g key={track.trackId}>
+                      <polyline
+                        points={pointsStr}
+                        fill="none"
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        opacity={opacity}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      {lastPt && (
+                        <circle
+                          cx={lastPt.x}
+                          cy={lastPt.y}
+                          r={isHighRisk ? 1.8 : 1.2}
+                          fill={strokeColor}
+                          opacity={isHighRisk ? 1 : 0.7}
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
           </div>
         )}
       </div>

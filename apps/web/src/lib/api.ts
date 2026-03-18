@@ -56,6 +56,7 @@ async function getDemoResponse<T>(path: string, options: RequestInit = {}): Prom
   if (p === "/api/v1/terminals") return mockApi.getTerminals() as Promise<T>;
   if (p.match(/^\/api\/v1\/lidar\/zones\/[^/]+\/density$/)) return mockApi.getZoneDensity(seg(p, 5)) as Promise<T>;
   if (p.match(/^\/api\/v1\/lidar\/queue\//)) return mockApi.getQueueMetrics(seg(p, 5)) as Promise<T>;
+  if (p.startsWith("/api/v1/lidar/tracks/paths")) return mockApi.getTrackPaths() as Promise<T>;
 
   // Sensors
   if (p === "/api/v1/sensors") return mockApi.getSensors() as Promise<T>;
