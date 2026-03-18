@@ -266,6 +266,82 @@ async function start() {
     fastify.log.warn({ err }, 'Auto-seed error (non-fatal)');
   }
 
+  // --- Refresh time-series data on every deploy ---
+  // Zone density, track objects, and queue metrics use NOW()-relative timestamps.
+  // After hours pass, the data falls outside query windows. Regenerate fresh data
+  // anchored to the current server time so dashboards always show activity.
+  try {
+    const staleCheck = await sql`
+      SELECT COUNT(*)::int AS cnt FROM zone_density WHERE time >= NOW() - INTERVAL '2 hours'
+    `;
+    if (staleCheck[0].cnt === 0) {
+      fastify.log.info('Time-series data is stale — regenerating...');
+
+      // Clean old time-series
+      await sql`DELETE FROM track_objects WHERE TRUE`;
+      await sql`DELETE FROM zone_density WHERE TRUE`;
+      await sql`DELETE FROM queue_metrics WHERE TRUE`;
+
+      // Regenerate zone density (2h, 5-min intervals, all zones)
+      await sql.unsafe(`
+        INSERT INTO zone_density (time, zone_id, count, density_pct, avg_dwell_secs)
+        SELECT
+          ts, z.id,
+          20 + (12 * sin(EXTRACT(EPOCH FROM ts) / 600))::int + (random() * 10)::int,
+          40 + (20 * sin(EXTRACT(EPOCH FROM ts) / 600))::numeric + (random() * 12)::numeric,
+          100 + (random() * 200)::numeric
+        FROM zones z
+        CROSS JOIN generate_series(NOW() - INTERVAL '2 hours', NOW(), INTERVAL '5 minutes') AS ts
+      `);
+
+      // Regenerate queue metrics (4h, 5-min intervals, all zones)
+      await sql.unsafe(`
+        INSERT INTO queue_metrics (time, zone_id, queue_depth, wait_time_mins, throughput_per_hr, sla_met)
+        SELECT
+          ts, z.id,
+          15 + (12 * sin(EXTRACT(EPOCH FROM ts) / 600))::int + (random() * 8)::int,
+          5 + (4 * sin(EXTRACT(EPOCH FROM ts) / 600))::numeric + (random() * 2)::numeric,
+          160 + (35 * sin(EXTRACT(EPOCH FROM ts) / 600))::int + (random() * 18)::int,
+          (5 + (4 * sin(EXTRACT(EPOCH FROM ts) / 600))::numeric + (random() * 2)::numeric) < z.sla_wait_mins
+        FROM zones z
+        CROSS JOIN generate_series(NOW() - INTERVAL '4 hours', NOW(), INTERVAL '5 minutes') AS ts
+      `);
+
+      // Regenerate track objects (30 min, all sensors)
+      await sql.unsafe(`
+        INSERT INTO track_objects (time, track_id, sensor_id, zone_id, centroid, velocity_ms, classification, behavior_score, dwell_secs)
+        SELECT
+          ts + (random() * INTERVAL '1 minute'),
+          uuid_generate_v4(),
+          s.id, s.zone_id,
+          json_build_object(
+            'x', -97.0 + (random() * 0.1),
+            'y', 32.9 + (random() * 0.01),
+            'z', 0.8 + (random() * 0.5)
+          )::jsonb,
+          CASE WHEN random() < 0.7 THEN 1.2 + (random() * 0.5)
+               WHEN random() < 0.9 THEN random() * 0.3
+               ELSE 1.8 + (random() * 1.0) END,
+          CASE WHEN random() < 0.92 THEN 'PERSON'
+               WHEN random() < 0.96 THEN 'OBJECT'
+               ELSE 'UNKNOWN' END,
+          CASE WHEN random() < 0.80 THEN (10 + (random() * 25))::int
+               WHEN random() < 0.95 THEN (40 + (random() * 30))::int
+               ELSE (75 + (random() * 25))::int END,
+          (5 + (random() * 300))::numeric
+        FROM sensor_nodes s
+        CROSS JOIN generate_series(NOW() - INTERVAL '30 minutes', NOW(), INTERVAL '1 minute') AS ts
+      `);
+
+      const densityCnt = await sql`SELECT COUNT(*)::int AS cnt FROM zone_density`;
+      const trackCnt = await sql`SELECT COUNT(*)::int AS cnt FROM track_objects`;
+      const queueCnt = await sql`SELECT COUNT(*)::int AS cnt FROM queue_metrics`;
+      fastify.log.info(`Time-series refreshed: ${densityCnt[0].cnt} density, ${trackCnt[0].cnt} tracks, ${queueCnt[0].cnt} queue metrics`);
+    }
+  } catch (err) {
+    fastify.log.warn({ err }, 'Time-series refresh error (non-fatal)');
+  }
+
   // --- Start BullMQ workers ---
 
   const anomalyWorker = startAnomalyProcessor();
