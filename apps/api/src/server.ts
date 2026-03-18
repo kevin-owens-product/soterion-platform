@@ -92,7 +92,7 @@ async function buildServer() {
 
   await fastify.register(jwt, {
     secret: JWT_SECRET,
-    sign: { expiresIn: '1h' },
+    sign: { expiresIn: '8h' },
   });
 
   await fastify.register(sensible);

@@ -68,7 +68,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
           facility_id: operator.facility_id,
           jti,
         },
-        { expiresIn: '1h' },
+        { expiresIn: '8h' },
       );
 
       // Generate refresh token (opaque UUID stored in operator_sessions)
@@ -100,7 +100,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
       return reply.code(200).send({
         access_token: accessToken,
         refresh_token: refreshToken,
-        expires_in: 3600,
+        expires_in: 28800,
         token_type: 'Bearer' as const,
         operator: {
           id: operator.id,
@@ -216,7 +216,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
           facility_id: operator.facility_id,
           jti: newJti,
         },
-        { expiresIn: '1h' },
+        { expiresIn: '8h' },
       );
 
       // Issue new refresh token
@@ -240,7 +240,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
       return reply.code(200).send({
         access_token: accessToken,
         refresh_token: newRefreshToken,
-        expires_in: 3600,
+        expires_in: 28800,
         token_type: 'Bearer' as const,
       });
     } catch (err) {

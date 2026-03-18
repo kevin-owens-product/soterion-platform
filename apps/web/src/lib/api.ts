@@ -118,6 +118,35 @@ async function getDemoResponse<T>(path: string, options: RequestInit = {}): Prom
   return {} as T;
 }
 
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = localStorage.getItem("soterion_refresh_token");
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    const newToken = data.access_token || data.accessToken || "";
+    const newRefresh = data.refresh_token || data.refreshToken || "";
+    if (newToken) {
+      localStorage.setItem("soterion_token", newToken);
+      if (newRefresh) localStorage.setItem("soterion_refresh_token", newRefresh);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
@@ -125,7 +154,7 @@ export async function apiFetch<T = unknown>(
   if (DEMO_MODE) {
     return getDemoResponse<T>(path, options);
   }
-  const res = await fetch(`${BASE_URL}${path}`, {
+  let res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -133,6 +162,34 @@ export async function apiFetch<T = unknown>(
       ...options.headers,
     },
   });
+
+  // Auto-refresh on 401
+  if (res.status === 401 && path !== "/api/v1/auth/login" && path !== "/api/v1/auth/refresh") {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = tryRefreshToken().finally(() => { isRefreshing = false; });
+    }
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      // Retry the original request with the new token
+      res = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+          ...options.headers,
+        },
+      });
+    } else {
+      // Refresh failed — clear auth and redirect to login
+      localStorage.removeItem("soterion_token");
+      localStorage.removeItem("soterion_refresh_token");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+      throw new Error("Session expired");
+    }
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");

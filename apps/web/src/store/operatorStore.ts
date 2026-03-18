@@ -38,7 +38,9 @@ export const useOperatorStore = create<OperatorState>((set, get) => ({
     try {
       const response = await apiLogin(email, password);
       const token = response.accessToken || response.access_token || response.token || "";
+      const refreshToken = (response as any).refreshToken || (response as any).refresh_token || "";
       localStorage.setItem("soterion_token", token);
+      if (refreshToken) localStorage.setItem("soterion_refresh_token", refreshToken);
       set({
         currentOperator: response.operator,
         isAuthenticated: true,
@@ -66,6 +68,7 @@ export const useOperatorStore = create<OperatorState>((set, get) => ({
 
   logout: () => {
     localStorage.removeItem("soterion_token");
+    localStorage.removeItem("soterion_refresh_token");
     set({
       currentOperator: null,
       isAuthenticated: false,
