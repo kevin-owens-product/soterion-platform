@@ -271,10 +271,16 @@ async function start() {
   // After hours pass, the data falls outside query windows. Regenerate fresh data
   // anchored to the current server time so dashboards always show activity.
   try {
+    // Check if track paths have grouped data (multiple points per track_id)
     const staleCheck = await sql`
-      SELECT COUNT(*)::int AS cnt FROM zone_density WHERE time >= NOW() - INTERVAL '2 hours'
+      SELECT COUNT(*)::int AS cnt FROM track_objects
+      WHERE time >= NOW() - INTERVAL '30 minutes'
     `;
-    if (staleCheck[0].cnt === 0) {
+    const pathCheck = staleCheck[0].cnt > 0
+      ? await sql`SELECT COUNT(DISTINCT track_id)::int AS cnt FROM track_objects WHERE time >= NOW() - INTERVAL '30 minutes'`
+      : [{ cnt: 0 }];
+    // Refresh if no recent tracks OR if tracks exist but don't form paths (each track_id has only 1 row)
+    if (staleCheck[0].cnt === 0 || (staleCheck[0].cnt > 0 && staleCheck[0].cnt <= pathCheck[0].cnt * 2)) {
       fastify.log.info('Time-series data is stale — regenerating...');
 
       // Clean old time-series
@@ -283,13 +289,14 @@ async function start() {
       await sql`DELETE FROM queue_metrics WHERE TRUE`;
 
       // Regenerate zone density (2h, 5-min intervals, all zones)
+      // Base values 25-45 count, 40-75% density — realistic airport traffic
       await sql.unsafe(`
         INSERT INTO zone_density (time, zone_id, count, density_pct, avg_dwell_secs)
         SELECT
           ts, z.id,
-          20 + (12 * sin(EXTRACT(EPOCH FROM ts) / 600))::int + (random() * 10)::int,
-          40 + (20 * sin(EXTRACT(EPOCH FROM ts) / 600))::numeric + (random() * 12)::numeric,
-          100 + (random() * 200)::numeric
+          25 + (15 * sin(EXTRACT(EPOCH FROM ts) / 600))::int + (random() * 12)::int,
+          45 + (22 * sin(EXTRACT(EPOCH FROM ts) / 600))::numeric + (random() * 15)::numeric,
+          120 + (random() * 240)::numeric
         FROM zones z
         CROSS JOIN generate_series(NOW() - INTERVAL '2 hours', NOW(), INTERVAL '5 minutes') AS ts
       `);
@@ -307,31 +314,48 @@ async function start() {
         CROSS JOIN generate_series(NOW() - INTERVAL '4 hours', NOW(), INTERVAL '5 minutes') AS ts
       `);
 
-      // Regenerate track objects (30 min, all sensors)
+      // Generate a pool of persistent track IDs (8 per sensor) so paths have multiple points
+      await sql.unsafe(`
+        CREATE TEMP TABLE IF NOT EXISTS _track_pool AS
+        SELECT
+          s.id AS sensor_id,
+          s.zone_id,
+          uuid_generate_v4() AS track_id,
+          CASE WHEN random() < 0.85 THEN 'PERSON'
+               WHEN random() < 0.95 THEN 'VEHICLE'
+               ELSE 'OBJECT' END AS classification,
+          (random() * 0.005) AS dx,
+          (random() * 0.001) AS dy,
+          random() AS base_x,
+          random() AS base_y
+        FROM sensor_nodes s
+        CROSS JOIN generate_series(1, 8) AS n
+      `);
+
+      // Regenerate track objects (30 min) — each track_id gets ~30 points (movement path)
       await sql.unsafe(`
         INSERT INTO track_objects (time, track_id, sensor_id, zone_id, centroid, velocity_ms, classification, behavior_score, dwell_secs)
         SELECT
-          ts + (random() * INTERVAL '1 minute'),
-          uuid_generate_v4(),
-          s.id, s.zone_id,
+          ts,
+          tp.track_id,
+          tp.sensor_id,
+          tp.zone_id,
           json_build_object(
-            'x', -97.0 + (random() * 0.1),
-            'y', 32.9 + (random() * 0.01),
-            'z', 0.8 + (random() * 0.5)
+            'x', -97.0 + (tp.base_x * 0.05) + (tp.dx * EXTRACT(EPOCH FROM (ts - (NOW() - INTERVAL '30 minutes'))) / 60),
+            'y', 32.9 + (tp.base_y * 0.005) + (tp.dy * EXTRACT(EPOCH FROM (ts - (NOW() - INTERVAL '30 minutes'))) / 60),
+            'z', 0.8 + (random() * 0.3)
           )::jsonb,
-          CASE WHEN random() < 0.7 THEN 1.2 + (random() * 0.5)
-               WHEN random() < 0.9 THEN random() * 0.3
-               ELSE 1.8 + (random() * 1.0) END,
-          CASE WHEN random() < 0.92 THEN 'PERSON'
-               WHEN random() < 0.96 THEN 'OBJECT'
-               ELSE 'UNKNOWN' END,
+          1.0 + (random() * 1.5),
+          tp.classification,
           CASE WHEN random() < 0.80 THEN (10 + (random() * 25))::int
                WHEN random() < 0.95 THEN (40 + (random() * 30))::int
                ELSE (75 + (random() * 25))::int END,
-          (5 + (random() * 300))::numeric
-        FROM sensor_nodes s
+          (EXTRACT(EPOCH FROM (ts - (NOW() - INTERVAL '30 minutes'))))::numeric
+        FROM _track_pool tp
         CROSS JOIN generate_series(NOW() - INTERVAL '30 minutes', NOW(), INTERVAL '1 minute') AS ts
       `);
+
+      await sql.unsafe('DROP TABLE IF EXISTS _track_pool');
 
       const densityCnt = await sql`SELECT COUNT(*)::int AS cnt FROM zone_density`;
       const trackCnt = await sql`SELECT COUNT(*)::int AS cnt FROM track_objects`;
