@@ -3,12 +3,12 @@ import { useAlertsStore } from "@/store/alertsStore";
 import { useOperatorStore } from "@/store/operatorStore";
 
 const navItems = [
-  { to: "/ops", label: "Ops Center", icon: "grid" },
-  { to: "/security", label: "Security", icon: "shield", badge: true },
-  { to: "/leaderboard", label: "Leaderboard", icon: "trophy" },
-  { to: "/sensors", label: "Sensors", icon: "radio" },
-  { to: "/analytics", label: "Analytics", icon: "chart" },
-  { to: "/shift-handoff", label: "Shift Handoff", icon: "clipboard" },
+  { to: "/app/ops", label: "Ops Center", icon: "grid" },
+  { to: "/app/security", label: "Security", icon: "shield", badge: true },
+  { to: "/app/leaderboard", label: "Leaderboard", icon: "trophy" },
+  { to: "/app/sensors", label: "Sensors", icon: "radio" },
+  { to: "/app/analytics", label: "Analytics", icon: "chart" },
+  { to: "/app/shift-handoff", label: "Shift Handoff", icon: "clipboard" },
 ];
 
 const icons: Record<string, JSX.Element> = {

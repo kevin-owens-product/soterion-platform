@@ -14,7 +14,7 @@ export function Login() {
     e.preventDefault();
     try {
       await login(email, password);
-      navigate("/ops", { replace: true });
+      navigate("/app/ops", { replace: true });
     } catch {
       // error is already set in store
     }
